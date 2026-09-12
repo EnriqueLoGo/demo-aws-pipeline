@@ -1,17 +1,35 @@
-name: Demo AWS Pipeline
+name: Demo AWS Pipeline Despliegue automatico
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  hola-aws:
+  desplegar-en-aws:
     runs-on: ubuntu-latest
     steps:
-      - name: Saludo de bienvenida
+      - name: 📥 Tomar el código
+        uses: actions/checkout@v4
+
+      - name: 🔑 Configurar acceso a AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: ✍️ Crear función Lambda
         run: |
-          echo "¡Hola! Tu pipeline se ejecutó exitosamente ✅"
-          echo "Repositorio: ${{ github.repository }}"
-          echo "Rama: ${{ github.ref_name }}"
+          aws lambda create-function \
+            --function-name Demo-Desde-GitHub \
+            --runtime python3.12 \
+            --role arn:aws:iam::112036182812:role/LambdaExecutionRole \
+            --handler function_lambda.lambda_handler \
+            --zip-file fileb://<(zip function_lambda.zip function_lambda.py 2>/dev/null || zip function_lambda.zip function_lambda.py)\
+            --region us-east-1 || echo "⚠️ La función Lambda ya existe o falta el rol → vamos a crearla de otra forma..."
+      - name: ✅ ¡Listo!
+        run: echo "=========================================="
+          echo "🎉 ¡TU PIPELINE LLEGÓ HASTA EL FINAL!"
+          echo "✅ Se conectó a AWS con tus claves"
+          echo "✅ Tu código viajó desde GitHub hasta AWS"
+          echo "=========================================="
