@@ -1,0 +1,17 @@
+name: Demo AWS Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  hola-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Saludo de bienvenida
+        run: |
+          echo "¡Hola! Tu pipeline se ejecutó exitosamente ✅"
+          echo "Repositorio: ${{ github.repository }}"
+          echo "Rama: ${{ github.ref_name }}"
