@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Lista de compras serverless con ambientes aislados
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Ambiente que se va a desplegar
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 10
+    MemorySize: 128
+    Tracing: Active
+
+Resources:
+  PantryTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "pantry-${Environment}-products"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  PantryApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+
+  PantryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "pantry-${Environment}-api"
+      CodeUri: .
+      Handler: function_lambda.lambda_handler
+      Environment:
+        Variables:
+          PANTRY_TABLE: !Ref PantryTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PantryTable
+      Events:
+        GetMaster:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /master
+            Method: GET
+        GetShopping:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /shopping
+            Method: GET
+        CreateProduct:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /products
+            Method: POST
+        MarkNeeded:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /products/{id}/need
+            Method: POST
+        MarkBought:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /products/{id}/bought
+            Method: POST
+        Options:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /{proxy+}
+            Method: OPTIONS
+
+Outputs:
+  ApiUrl:
+    Description: URL base de la API del ambiente
+    Value: !Sub "https://${PantryApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${Environment}"
+  TableName:
+    Description: Tabla DynamoDB del ambiente
+    Value: !Ref PantryTable
+  FunctionName:
+    Description: Nombre de la Lambda del ambiente
+    Value: !Ref PantryFunction
