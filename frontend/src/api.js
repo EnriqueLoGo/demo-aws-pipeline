@@ -14,7 +14,6 @@ async function request(path, options = {}) {
 }
 
 export function getMasterList() {
-  // El backend responde { products: [...] }
   return request("/master").then((data) => data.products)
 }
 
@@ -22,17 +21,17 @@ export function getShoppingList() {
   return request("/shopping").then((data) => data.products)
 }
 
-export function createProduct(name, type) {
+export function createProduct(name, type, category = "General", quantity = 1) {
   return request("/products", {
     method: "POST",
-    body: JSON.stringify({ name, type }),
+    body: JSON.stringify({ name, type, category, quantity }),
   }).then((data) => data.product)
 }
 
-export function updateProduct(id, name, type) {
+export function updateProduct(id, name, type, category = "General", quantity = 1) {
   return request(`/products/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ name, type }),
+    body: JSON.stringify({ name, type, category, quantity }),
   }).then((data) => data.product)
 }
 

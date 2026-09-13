@@ -235,3 +235,34 @@
   background: #c0392b;
   color: white;
 }
+.search-box {
+  margin: 12px 0;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.product-name small {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.add-form input,
+.add-form select,
+.add-form button {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}

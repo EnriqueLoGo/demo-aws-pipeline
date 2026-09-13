@@ -24,10 +24,15 @@ export default function App() {
   const [error, setError] = useState("")
   const [newName, setNewName] = useState("")
   const [newType, setNewType] = useState("WHEN_MISSING")
+  const [newCategory, setNewCategory] = useState("General")
+  const [newQuantity, setNewQuantity] = useState(1)
+  const [search, setSearch] = useState("")
   const [editingId, setEditingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [editName, setEditName] = useState("")
   const [editType, setEditType] = useState("WHEN_MISSING")
+  const [editCategory, setEditCategory] = useState("General")
+  const [editQuantity, setEditQuantity] = useState(1)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -50,8 +55,15 @@ export default function App() {
     loadAll()
   }, [loadAll])
 
+  const filteredShoppingList = shoppingList.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredMasterList = masterList.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase())
+  )
+
   async function handleBought(id) {
-    // Actualización optimista: lo quitamos de la vista antes de confirmar con el servidor.
     setShoppingList((prev) => prev.filter((item) => item.id !== id))
     try {
       await markBought(id)
@@ -74,8 +86,11 @@ export default function App() {
     event.preventDefault()
     if (!newName.trim()) return
     try {
-      await createProduct(newName.trim(), newType)
+      await createProduct(newName.trim(), newType, newCategory, Number(newQuantity) || 1)
       setNewName("")
+      setNewCategory("General")
+      setNewQuantity(1)
+      setNewType("WHEN_MISSING")
       loadAll()
     } catch (err) {
       setError(err.message)
@@ -86,6 +101,8 @@ export default function App() {
     setEditingId(item.id)
     setEditName(item.name)
     setEditType(item.type)
+    setEditCategory(item.category || "General")
+    setEditQuantity(item.quantity || 1)
   }
 
   function cancelEdit() {
@@ -96,7 +113,13 @@ export default function App() {
     event.preventDefault()
     if (!editName.trim()) return
     try {
-      await updateProduct(id, editName.trim(), editType)
+      await updateProduct(
+        id,
+        editName.trim(),
+        editType,
+        editCategory || "General",
+        Number(editQuantity) || 1
+      )
       setEditingId(null)
       loadAll()
     } catch (err) {
@@ -104,20 +127,20 @@ export default function App() {
     }
   }
 
-function askDelete(id) {
-  setConfirmDeleteId(id)
-}
-
-async function confirmDelete() {
-  const id = confirmDeleteId
-  setConfirmDeleteId(null)
-  try {
-    await deleteProduct(id)
-    loadAll()
-  } catch (err) {
-    setError(err.message)
+  function askDelete(id) {
+    setConfirmDeleteId(id)
   }
-}
+
+  async function confirmDelete() {
+    const id = confirmDeleteId
+    setConfirmDeleteId(null)
+    try {
+      await deleteProduct(id)
+      loadAll()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   return (
     <div className="app">
@@ -142,17 +165,32 @@ async function confirmDelete() {
         </button>
       </nav>
 
+      <div className="search-box">
+        <input
+          type="text"
+          placeholder="Buscar producto..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       <main className="content">
         {loading && <p className="hint">Cargando...</p>}
 
         {!loading && tab === TABS.SHOPPING && (
           <ul className="product-list">
-            {shoppingList.length === 0 && (
+            {filteredShoppingList.length === 0 && (
               <li className="hint">No hay productos pendientes 🎉</li>
             )}
-            {shoppingList.map((item) => (
+            {filteredShoppingList.map((item) => (
               <li key={item.id} className="product-item">
-                <span className="product-name">{item.name}</span>
+                <span className="product-name">
+                  {item.name}
+                  <small>
+                    {" "}
+                    · {item.category || "General"} · {item.quantity || 1}
+                  </small>
+                </span>
                 <button
                   className="btn-bought"
                   onClick={() => handleBought(item.id)}
@@ -173,15 +211,32 @@ async function confirmDelete() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
+
+              <input
+                type="text"
+                placeholder="Categoría"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+              />
+
+              <input
+                type="number"
+                min="1"
+                value={newQuantity}
+                onChange={(e) => setNewQuantity(e.target.value)}
+                style={{ width: 80 }}
+              />
+
               <select value={newType} onChange={(e) => setNewType(e.target.value)}>
                 <option value="WHEN_MISSING">Cuando falte</option>
                 <option value="FIXED">Fijo (siempre)</option>
               </select>
+
               <button type="submit">Agregar</button>
             </form>
 
             <ul className="product-list">
-              {masterList.map((item) =>
+              {filteredMasterList.map((item) =>
                 editingId === item.id ? (
                   <li key={item.id} className="product-item edit-row">
                     <form className="add-form" onSubmit={(e) => handleSaveEdit(e, item.id)}>
@@ -190,10 +245,26 @@ async function confirmDelete() {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                       />
+
+                      <input
+                        type="text"
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                      />
+
+                      <input
+                        type="number"
+                        min="1"
+                        value={editQuantity}
+                        onChange={(e) => setEditQuantity(e.target.value)}
+                        style={{ width: 80 }}
+                      />
+
                       <select value={editType} onChange={(e) => setEditType(e.target.value)}>
                         <option value="WHEN_MISSING">Cuando falte</option>
                         <option value="FIXED">Fijo (siempre)</option>
                       </select>
+
                       <button type="submit">Guardar</button>
                       <button type="button" onClick={cancelEdit}>Cancelar</button>
                     </form>
@@ -202,8 +273,13 @@ async function confirmDelete() {
                   <li key={item.id} className="product-item">
                     <span className="product-name">
                       {item.name}
+                      <small>
+                        {" "}
+                        · {item.category || "General"} · {item.quantity || 1}
+                      </small>
                       {item.type === "FIXED" && <span className="badge">FIJO</span>}
                     </span>
+
                     <div className="item-actions">
                       {!item.needed && (
                         <button
@@ -223,13 +299,14 @@ async function confirmDelete() {
             </ul>
           </>
         )}
+      </main>
+
       <ConfirmDialog
         open={confirmDeleteId !== null}
         message="¿Eliminar este producto de la lista maestra?"
         onConfirm={confirmDelete}
         onCancel={() => setConfirmDeleteId(null)}
       />
-      </main>
     </div>
   )
 }
