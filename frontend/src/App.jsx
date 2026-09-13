@@ -33,6 +33,7 @@ export default function App() {
   const [editType, setEditType] = useState("WHEN_MISSING")
   const [editCategory, setEditCategory] = useState("General")
   const [editQuantity, setEditQuantity] = useState(1)
+  const [categoryFilter, setCategoryFilter] = useState("ALL")
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -55,13 +56,29 @@ export default function App() {
     loadAll()
   }, [loadAll])
 
-  const filteredShoppingList = shoppingList.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const categoryOptions = [
+  "ALL",
+  ...new Set(
+    masterList
+      .map((item) => (item.category || "General").trim())
+      .filter(Boolean)
+  ),
+]
+const filteredShoppingList = shoppingList.filter((item) => {
+  const matchesName = item.name.toLowerCase().includes(search.toLowerCase())
+  const matchesCategory =
+    categoryFilter === "ALL" || (item.category || "General") === categoryFilter
+  return matchesName && matchesCategory
+})
 
-  const filteredMasterList = masterList.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  )
+const filteredMasterList = masterList.filter((item) => {
+  const matchesName = item.name.toLowerCase().includes(search.toLowerCase())
+  const matchesCategory =
+    categoryFilter === "ALL" || (item.category || "General") === categoryFilter
+  return matchesName && matchesCategory
+})
+
+const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
 
   async function handleBought(id) {
     setShoppingList((prev) => prev.filter((item) => item.id !== id))
@@ -155,7 +172,7 @@ export default function App() {
           className={tab === TABS.SHOPPING ? "tab active" : "tab"}
           onClick={() => setTab(TABS.SHOPPING)}
         >
-          Por comprar ({shoppingList.length})
+          Por comprar ({filteredShoppingList.length})
         </button>
         <button
           className={tab === TABS.MASTER ? "tab active" : "tab"}
@@ -165,13 +182,34 @@ export default function App() {
         </button>
       </nav>
 
-      <div className="search-box">
-        <input
-          type="text"
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="toolbar">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Buscar producto..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        <select
+          className="category-filter"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="ALL">Todas las categorías</option>
+          {categoryOptions
+            .filter((category) => category !== "ALL")
+            .map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+        </select>
+      </div>
+
+      <div className="summary-box">
+        <strong>Total por comprar:</strong> {totalNeeded} unidades
       </div>
 
       <main className="content">

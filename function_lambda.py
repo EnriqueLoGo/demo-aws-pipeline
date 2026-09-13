@@ -57,18 +57,18 @@ def list_all_products():
     result = table.scan()
     items.extend(result.get("Items", []))
 
-    # scan puede paginar si la tabla crece; seguimos hasta terminar.
     while "LastEvaluatedKey" in result:
         result = table.scan(ExclusiveStartKey=result["LastEvaluatedKey"])
         items.extend(result.get("Items", []))
 
-    return sorted(items, key=lambda item: item["name"].casefold())
-
+    return sorted(items, key=lambda item: (item.get("category", "General").casefold(), item["name"].casefold()))
 
 def create_product(payload):
     """Añade un producto a la lista maestra; nunca se elimina desde esta API."""
     name = str(payload.get("name", "")).strip()
     product_type = str(payload.get("type", "")).upper()
+    category = str(payload.get("category", "")).strip() or "General"
+    quantity = normalize_quantity(payload.get("quantity", 1))
 
     if not name:
         raise ValueError("El campo 'name' es obligatorio.")
@@ -80,7 +80,8 @@ def create_product(payload):
         "id": str(uuid4()),
         "name": name,
         "type": product_type,
-        # Los fijos siempre figuran como necesarios; los otros empiezan en falso.
+        "category": category,
+        "quantity": quantity,
         "needed": product_type == FIXED,
         "createdAt": timestamp,
         "updatedAt": timestamp,
@@ -98,9 +99,11 @@ def product_id(event):
 
 
 def update_product(item_id, payload):
-    """Edita nombre y/o tipo de un producto ya existente (cambio, del ABC)."""
+    """Edita nombre, tipo, categoría y cantidad de un producto ya existente."""
     name = str(payload.get("name", "")).strip()
     product_type = str(payload.get("type", "")).upper()
+    category = str(payload.get("category", "")).strip() or "General"
+    quantity = normalize_quantity(payload.get("quantity", 1))
 
     if not name:
         raise ValueError("El campo 'name' es obligatorio.")
@@ -110,10 +113,27 @@ def update_product(item_id, payload):
     try:
         result = table.update_item(
             Key={"id": item_id},
-            UpdateExpression="SET #n = :name, #t = :type, updatedAt = :updated_at",
+            UpdateExpression="""
+                SET #n = :name,
+                    #t = :type,
+                    #c = :category,
+                    #q = :quantity,
+                    updatedAt = :updated_at
+            """,
             ConditionExpression="attribute_exists(id)",
-            ExpressionAttributeNames={"#n": "name", "#t": "type"},
-            ExpressionAttributeValues={":name": name, ":type": product_type, ":updated_at": now()},
+            ExpressionAttributeNames={
+                "#n": "name",
+                "#t": "type",
+                "#c": "category",
+                "#q": "quantity",
+            },
+            ExpressionAttributeValues={
+                ":name": name,
+                ":type": product_type,
+                ":category": category,
+                ":quantity": quantity,
+                ":updated_at": now(),
+            },
             ReturnValues="ALL_NEW",
         )
     except table.meta.client.exceptions.ConditionalCheckFailedException as error:
@@ -158,6 +178,16 @@ def mark_bought(item_id):
         ReturnValues="ALL_NEW",
     )
     return result["Attributes"]
+
+def normalize_quantity(value):
+    """Valida y normaliza la cantidad de un producto."""
+    try:
+        qty = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("El campo 'quantity' debe ser un número entero.") from error
+    if qty < 1:
+        raise ValueError("El campo 'quantity' debe ser mayor o igual a 1.")
+    return qty
 
 
 def lambda_handler(event, context):
