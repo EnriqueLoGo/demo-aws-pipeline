@@ -9,6 +9,7 @@ import {
   markBought,
 } from "./api"
 import "./App.css"
+import ConfirmDialog from "./ConfirmDialog"
 
 const TABS = {
   SHOPPING: "shopping",
@@ -24,6 +25,7 @@ export default function App() {
   const [newName, setNewName] = useState("")
   const [newType, setNewType] = useState("WHEN_MISSING")
   const [editingId, setEditingId] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [editName, setEditName] = useState("")
   const [editType, setEditType] = useState("WHEN_MISSING")
 
@@ -102,15 +104,20 @@ export default function App() {
     }
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("¿Eliminar este producto de la lista maestra?")) return
-    try {
-      await deleteProduct(id)
-      loadAll()
-    } catch (err) {
-      setError(err.message)
-    }
+function askDelete(id) {
+  setConfirmDeleteId(id)
+}
+
+async function confirmDelete() {
+  const id = confirmDeleteId
+  setConfirmDeleteId(null)
+  try {
+    await deleteProduct(id)
+    loadAll()
+  } catch (err) {
+    setError(err.message)
   }
+}
 
   return (
     <div className="app">
@@ -208,7 +215,7 @@ export default function App() {
                       )}
                       {item.needed && <span className="hint">En la lista</span>}
                       <button className="btn-edit" onClick={() => startEdit(item)}>✎</button>
-                      <button className="btn-delete" onClick={() => handleDelete(item.id)}>🗑</button>
+                      <button className="btn-delete" onClick={() => askDelete(item.id)}>🗑️</button>
                     </div>
                   </li>
                 )
@@ -216,6 +223,12 @@ export default function App() {
             </ul>
           </>
         )}
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        message="¿Eliminar este producto de la lista maestra?"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
       </main>
     </div>
   )
