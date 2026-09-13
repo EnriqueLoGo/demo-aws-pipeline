@@ -127,8 +127,14 @@ def mark_bought(item_id):
 
 def lambda_handler(event, context):
     """Enruta las solicitudes HTTP recibidas desde API Gateway."""
-    method = event.get("requestContext", {}).get("http", {}).get("method") or event.get("httpMethod")
+    request_context = event.get("requestContext", {})
+    method = request_context.get("http", {}).get("method") or event.get("httpMethod")
     path = event.get("rawPath") or event.get("path") or ""
+
+    # API Gateway incluye /dev, /staging o /prod en la ruta de un stage.
+    stage = request_context.get("stage")
+    if stage and stage != "$default" and path.startswith(f"/{stage}/"):
+        path = path[len(stage) + 1:]
 
     try:
         if method == "OPTIONS":
