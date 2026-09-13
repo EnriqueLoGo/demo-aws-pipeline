@@ -5,6 +5,7 @@ on:
     branches: [dev, staging, main]
 
 permissions:
+  id-token: write   # ✅ REQUERIDO para OIDC — solicita el certificado
   contents: read
 
 jobs:
@@ -12,10 +13,8 @@ jobs:
     name: Desplegar en ${{ github.ref_name }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
-
     env:
       DEPLOY_ENV: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
-
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
@@ -28,11 +27,10 @@ jobs:
       - name: Instalar AWS SAM CLI
         uses: aws-actions/setup-sam@v2
 
-      - name: Configurar credenciales de AWS
+      - name: 🔑 ENTRAR A AWS SIN CLAVES — OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::112036182812:role/GitHubActionsOIDCRole
           aws-region: us-east-1
 
       - name: Validar infraestructura
