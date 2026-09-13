@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Rol IAM para OIDC de GitHub Actions del proyecto demo-aws-pipeline
+
+Parameters:
+  OIDCProviderArn:
+    Type: String
+    Description: ARN del proveedor OIDC de GitHub ya existente en la cuenta (compartido entre proyectos)
+    Default: arn:aws:iam::112036182812:oidc-provider/token.actions.githubusercontent.com
+  GitHubOrgWithId:
+    Type: String
+    Description: "Owner de GitHub con su ID inmutable, formato: org@orgId"
+    Default: EnriqueLoGo@217252427
+  GitHubRepoWithId:
+    Type: String
+    Description: "Nombre del repo con su ID inmutable, formato: repo@repoId"
+    Default: demo-aws-pipeline@1367686115
+  RoleName:
+    Type: String
+    Default: GitHubActionsOIDCRole
+
+Resources:
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref OIDCProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${GitHubOrgWithId}/${GitHubRepoWithId}:environment:dev"
+                  - !Sub "repo:${GitHubOrgWithId}/${GitHubRepoWithId}:environment:staging"
+                  - !Sub "repo:${GitHubOrgWithId}/${GitHubRepoWithId}:environment:prod"
+      # Permisos amplios temporales para la demo; restringir antes de producción real
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+Outputs:
+  RoleArn:
+    Description: ARN del rol que GitHub Actions asume vía OIDC
+    Value: !GetAtt GitHubActionsRole.Arn

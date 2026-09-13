@@ -12,7 +12,11 @@
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:EnriqueLoGo/demo-aws-pipeline:*"
+          "token.actions.githubusercontent.com:sub": [
+            "repo:EnriqueLoGo@217252427/demo-aws-pipeline@1367686115:environment:dev",
+            "repo:EnriqueLoGo@217252427/demo-aws-pipeline@1367686115:environment:staging",
+            "repo:EnriqueLoGo@217252427/demo-aws-pipeline@1367686115:environment:prod"
+          ]
         }
       }
     }
