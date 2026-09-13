@@ -14,24 +14,25 @@ async function request(path, options = {}) {
 }
 
 export function getMasterList() {
-  return request("/master")
+  // El backend responde { products: [...] }
+  return request("/master").then((data) => data.products)
 }
 
 export function getShoppingList() {
-  return request("/shopping")
+  return request("/shopping").then((data) => data.products)
 }
 
 export function createProduct(name, type) {
   return request("/products", {
     method: "POST",
     body: JSON.stringify({ name, type }),
-  })
+  }).then((data) => data.product)
 }
 
 export function markNeeded(id) {
-  return request(`/products/${id}/need`, { method: "POST" })
+  return request(`/products/${id}/need`, { method: "POST" }).then((data) => data.product)
 }
 
 export function markBought(id) {
-  return request(`/products/${id}/bought`, { method: "POST" })
+  return request(`/products/${id}/bought`, { method: "POST" }).then((data) => data.product)
 }
