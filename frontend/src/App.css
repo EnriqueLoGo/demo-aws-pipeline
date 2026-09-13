@@ -120,6 +120,40 @@
   min-height: 44px;
 }
 
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-edit,
+.btn-delete {
+  border: none;
+  background: none;
+  font-size: 18px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-edit:hover {
+  background: #eef;
+}
+
+.btn-delete:hover {
+  background: #fee;
+}
+
+.edit-row {
+  display: block;
+}
+
+.edit-row .add-form {
+  margin: 0;
+  flex-wrap: wrap;
+}
+
 .add-form {
   display: flex;
   gap: 8px;

@@ -3,6 +3,8 @@ import {
   getMasterList,
   getShoppingList,
   createProduct,
+  updateProduct,
+  deleteProduct,
   markNeeded,
   markBought,
 } from "./api"
@@ -21,6 +23,9 @@ export default function App() {
   const [error, setError] = useState("")
   const [newName, setNewName] = useState("")
   const [newType, setNewType] = useState("WHEN_MISSING")
+  const [editingId, setEditingId] = useState(null)
+  const [editName, setEditName] = useState("")
+  const [editType, setEditType] = useState("WHEN_MISSING")
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -69,6 +74,38 @@ export default function App() {
     try {
       await createProduct(newName.trim(), newType)
       setNewName("")
+      loadAll()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  function startEdit(item) {
+    setEditingId(item.id)
+    setEditName(item.name)
+    setEditType(item.type)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+  }
+
+  async function handleSaveEdit(event, id) {
+    event.preventDefault()
+    if (!editName.trim()) return
+    try {
+      await updateProduct(id, editName.trim(), editType)
+      setEditingId(null)
+      loadAll()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!window.confirm("¿Eliminar este producto de la lista maestra?")) return
+    try {
+      await deleteProduct(id)
       loadAll()
     } catch (err) {
       setError(err.message)
@@ -137,23 +174,45 @@ export default function App() {
             </form>
 
             <ul className="product-list">
-              {masterList.map((item) => (
-                <li key={item.id} className="product-item">
-                  <span className="product-name">
-                    {item.name}
-                    {item.type === "FIXED" && <span className="badge">FIJO</span>}
-                  </span>
-                  {!item.needed && (
-                    <button
-                      className="btn-need"
-                      onClick={() => handleNeed(item.id)}
-                    >
-                      + A la lista
-                    </button>
-                  )}
-                  {item.needed && <span className="hint">En la lista</span>}
-                </li>
-              ))}
+              {masterList.map((item) =>
+                editingId === item.id ? (
+                  <li key={item.id} className="product-item edit-row">
+                    <form className="add-form" onSubmit={(e) => handleSaveEdit(e, item.id)}>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                      />
+                      <select value={editType} onChange={(e) => setEditType(e.target.value)}>
+                        <option value="WHEN_MISSING">Cuando falte</option>
+                        <option value="FIXED">Fijo (siempre)</option>
+                      </select>
+                      <button type="submit">Guardar</button>
+                      <button type="button" onClick={cancelEdit}>Cancelar</button>
+                    </form>
+                  </li>
+                ) : (
+                  <li key={item.id} className="product-item">
+                    <span className="product-name">
+                      {item.name}
+                      {item.type === "FIXED" && <span className="badge">FIJO</span>}
+                    </span>
+                    <div className="item-actions">
+                      {!item.needed && (
+                        <button
+                          className="btn-need"
+                          onClick={() => handleNeed(item.id)}
+                        >
+                          + A la lista
+                        </button>
+                      )}
+                      {item.needed && <span className="hint">En la lista</span>}
+                      <button className="btn-edit" onClick={() => startEdit(item)}>✎</button>
+                      <button className="btn-delete" onClick={() => handleDelete(item.id)}>🗑</button>
+                    </div>
+                  </li>
+                )
+              )}
             </ul>
           </>
         )}

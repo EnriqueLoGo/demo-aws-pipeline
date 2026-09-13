@@ -29,6 +29,17 @@ export function createProduct(name, type) {
   }).then((data) => data.product)
 }
 
+export function updateProduct(id, name, type) {
+  return request(`/products/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ name, type }),
+  }).then((data) => data.product)
+}
+
+export function deleteProduct(id) {
+  return request(`/products/${id}`, { method: "DELETE" })
+}
+
 export function markNeeded(id) {
   return request(`/products/${id}/need`, { method: "POST" }).then((data) => data.product)
 }

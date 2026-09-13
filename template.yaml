@@ -69,6 +69,18 @@ Resources:
             ApiId: !Ref PantryApi
             Path: /products
             Method: POST
+        UpdateProduct:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /products/{id}
+            Method: PUT
+        DeleteProduct:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PantryApi
+            Path: /products/{id}
+            Method: DELETE
         MarkNeeded:
           Type: HttpApi
           Properties:

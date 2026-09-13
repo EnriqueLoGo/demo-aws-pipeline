@@ -28,7 +28,7 @@ def response(status_code, body):
         "headers": {
             "Content-Type": "application/json; charset=utf-8",
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+            "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         },
         "body": json.dumps(body, ensure_ascii=False),
@@ -97,6 +97,41 @@ def product_id(event):
     return value
 
 
+def update_product(item_id, payload):
+    """Edita nombre y/o tipo de un producto ya existente (cambio, del ABC)."""
+    name = str(payload.get("name", "")).strip()
+    product_type = str(payload.get("type", "")).upper()
+
+    if not name:
+        raise ValueError("El campo 'name' es obligatorio.")
+    if product_type not in VALID_TYPES:
+        raise ValueError("El campo 'type' debe ser FIXED o WHEN_MISSING.")
+
+    try:
+        result = table.update_item(
+            Key={"id": item_id},
+            UpdateExpression="SET #n = :name, #t = :type, updatedAt = :updated_at",
+            ConditionExpression="attribute_exists(id)",
+            ExpressionAttributeNames={"#n": "name", "#t": "type"},
+            ExpressionAttributeValues={":name": name, ":type": product_type, ":updated_at": now()},
+            ReturnValues="ALL_NEW",
+        )
+    except table.meta.client.exceptions.ConditionalCheckFailedException as error:
+        raise LookupError("No existe un producto con ese id.") from error
+    return result["Attributes"]
+
+
+def delete_product(item_id):
+    """Elimina un producto definitivamente (baja del ABC)."""
+    try:
+        table.delete_item(
+            Key={"id": item_id},
+            ConditionExpression="attribute_exists(id)",
+        )
+    except table.meta.client.exceptions.ConditionalCheckFailedException as error:
+        raise LookupError("No existe un producto con ese id.") from error
+
+
 def mark_needed(item_id):
     """Mueve un producto de la lista maestra a la lista de compras."""
     result = table.update_item(
@@ -146,6 +181,11 @@ def lambda_handler(event, context):
             return response(200, {"products": shopping})
         if method == "POST" and path == "/products":
             return response(201, {"product": create_product(request_body(event))})
+        if method == "PUT" and path.startswith("/products/") and not path.endswith(("/need", "/bought")):
+            return response(200, {"product": update_product(product_id(event), request_body(event))})
+        if method == "DELETE" and path.startswith("/products/"):
+            delete_product(product_id(event))
+            return response(204, {})
         if method == "POST" and path.endswith("/need"):
             return response(200, {"product": mark_needed(product_id(event))})
         if method == "POST" and path.endswith("/bought"):
