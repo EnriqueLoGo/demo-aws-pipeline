@@ -1,0 +1,34 @@
+version = 0.1
+
+[default.build.parameters]
+template_file = "template.yaml"
+
+[dev.deploy.parameters]
+stack_name = "pantry-dev"
+s3_prefix = "pantry-dev"
+resolve_s3 = true
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false
+parameter_overrides = "Environment=dev"
+
+[staging.deploy.parameters]
+stack_name = "pantry-staging"
+s3_prefix = "pantry-staging"
+resolve_s3 = true
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false
+parameter_overrides = "Environment=staging"
+
+[prod.deploy.parameters]
+stack_name = "pantry-prod"
+s3_prefix = "pantry-prod"
+resolve_s3 = true
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false
+parameter_overrides = "Environment=prod"

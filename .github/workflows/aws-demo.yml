@@ -1,49 +1,52 @@
-name: Demo AWS Pipeline - Despliegue automático
+name: Despliegue de Pantry API
 
 on:
   push:
-    branches: [main]
+    branches: [dev, staging, main]
+
+permissions:
+  contents: read
 
 jobs:
-  desplegar-en-aws:
+  desplegar:
+    name: Desplegar en ${{ github.ref_name }}
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
+
+    env:
+      DEPLOY_ENV: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
 
     steps:
-      - name: Tomar el código
+      - name: Descargar código
         uses: actions/checkout@v4
 
-      - name: Configurar acceso a AWS
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configurar credenciales de AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Empaquetar y desplegar la función Lambda
-        shell: bash
+      - name: Validar infraestructura
+        run: sam validate --template-file template.yaml --lint
+
+      - name: Construir aplicación
+        run: sam build --template-file template.yaml
+
+      - name: Desplegar infraestructura y aplicación
+        run: sam deploy --config-env "$DEPLOY_ENV"
+
+      - name: Mostrar URL de la API
         run: |
-          set -euo pipefail
-
-          zip -j function_lambda.zip function_lambda.py
-
-          if aws lambda get-function --function-name Demo-Desde-GitHub > /dev/null 2>&1; then
-            echo "La función ya existe; actualizando su código."
-            aws lambda update-function-code \
-              --function-name Demo-Desde-GitHub \
-              --zip-file fileb://function_lambda.zip
-          else
-            echo "La función no existe; creándola."
-            aws lambda create-function \
-              --function-name Demo-Desde-GitHub \
-              --runtime python3.12 \
-              --role arn:aws:iam::112036182812:role/LambdaExecutionRole \
-              --handler function_lambda.lambda_handler \
-              --zip-file fileb://function_lambda.zip
-          fi
-
-      - name: Listo
-        run: |
-          echo "=========================================="
-          echo "El pipeline terminó correctamente."
-          echo "Se conectó a AWS y desplegó el código."
-          echo "=========================================="
+          aws cloudformation describe-stacks \
+            --stack-name "pantry-$DEPLOY_ENV" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text
