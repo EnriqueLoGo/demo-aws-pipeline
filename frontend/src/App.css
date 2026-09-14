@@ -266,9 +266,19 @@
 }
 
 @media (max-width: 480px) {
+  .app {
+    max-width: none;
+    width: 100%;
+  }
+
+  .content {
+    padding: 12px 12px 24px;
+  }
+
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
 
   .search-box,
@@ -277,11 +287,22 @@
   }
 
   .add-form {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .add-form > * {
     width: 100%;
+    box-sizing: border-box;
+  }
+
+  .summary-box {
+    margin: 8px 0 12px;
+  }
+
+  .modal-box {
+    max-width: 100%;
   }
 
   .product-item {
