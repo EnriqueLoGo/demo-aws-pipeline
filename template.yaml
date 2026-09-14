@@ -37,6 +37,20 @@ Resources:
     Type: AWS::Serverless::HttpApi
     Properties:
       StageName: !Ref Environment
+      CorsConfiguration:
+        AllowOrigins:
+          - "https://d3a1mw75cbtr76.cloudfront.net"
+          - "http://localhost:5173"
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-Requested-With
 
   PantryFunction:
     Type: AWS::Serverless::Function

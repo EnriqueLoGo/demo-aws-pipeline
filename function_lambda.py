@@ -7,6 +7,7 @@ import base64
 import json
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import boto3
@@ -21,6 +22,15 @@ WHEN_MISSING = "WHEN_MISSING"
 VALID_TYPES = {FIXED, WHEN_MISSING}
 
 
+def json_default(value):
+    """Convierte tipos de DynamoDB a JSON serializable."""
+    if isinstance(value, Decimal):
+        if value % 1 == 0:
+            return int(value)
+        return float(value)
+    raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
+
+
 def response(status_code, body):
     """Construye una respuesta HTTP JSON, con CORS para un futuro frontend."""
     return {
@@ -31,7 +41,7 @@ def response(status_code, body):
             "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         },
-        "body": json.dumps(body, ensure_ascii=False),
+        "body": json.dumps(body, ensure_ascii=False, default=json_default),
     }
 
 
@@ -190,16 +200,26 @@ def normalize_quantity(value):
     return qty
 
 
+def normalize_path(event):
+    """Quita el prefijo del stage de API Gateway cuando venga en la ruta."""
+    path = event.get("rawPath") or event.get("path") or ""
+    if not path.startswith("/"):
+        path = f"/{path}"
+
+    segments = path.split("/")
+    if len(segments) > 2 and segments[1] in {"dev", "staging", "prod"}:
+        path = "/" + "/".join(segments[2:])
+        if not path.startswith("/"):
+            path = f"/{path}"
+
+    return path or "/"
+
+
 def lambda_handler(event, context):
     """Enruta las solicitudes HTTP recibidas desde API Gateway."""
     request_context = event.get("requestContext", {})
     method = request_context.get("http", {}).get("method") or event.get("httpMethod")
-    path = event.get("rawPath") or event.get("path") or ""
-
-    # API Gateway incluye /dev, /staging o /prod en la ruta de un stage.
-    stage = request_context.get("stage")
-    if stage and stage != "$default" and path.startswith(f"/{stage}/"):
-        path = path[len(stage) + 1:]
+    path = normalize_path(event)
 
     try:
         if method == "OPTIONS":
