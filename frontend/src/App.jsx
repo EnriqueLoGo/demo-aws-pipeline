@@ -308,7 +308,7 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                     </form>
                   </li>
                 ) : (
-                  <li key={item.id} className="product-item">
+                  <li key={item.id} className="product-item master-item">
                     <span className="product-name">
                       {item.name}
                       <small>

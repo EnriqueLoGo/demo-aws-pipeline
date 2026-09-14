@@ -3,7 +3,7 @@
 > Este documento existe para que cualquier persona (o cualquier IA) pueda retomar el proyecto
 > sin necesidad de reconstruir el contexto desde cero. Se actualiza conforme avanza el proyecto.
 >
-> Última actualización: 2026-09-13
+> Última actualización: 2026-09-14
 
 ---
 
@@ -164,6 +164,38 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
 - **Estado**: pendiente de limpiar ese registro (se puede borrar ahora fácilmente desde la
   propia app, gracias al nuevo botón de eliminar — ver sección 7).
 
+### 6.5 Ajustes de responsividad para celular
+- **Síntoma**: en pantallas pequeñas la búsqueda, el filtro de categorías y el formulario de
+  alta se comprimían; además, en "Por comprar" el botón "Comprado" bajaba debajo del producto
+  cuando el nombre era largo.
+- **Causa raíz**: el contenedor estaba limitado a `480px` y la regla móvil convertía todas las
+  tarjetas `.product-item` en una sola columna. Esto hacía que el botón compartiera la misma
+  fila visual con un nombre largo de forma incorrecta.
+- **Solución**: en [frontend/src/App.css](frontend/src/App.css), el contenedor ocupa todo el
+  ancho disponible en móviles, el toolbar y el formulario se apilan correctamente, y las
+  tarjetas de compras usan dos columnas: nombre flexible y botón fijo. Los nombres largos
+  ahora se ajustan dentro de su columna mediante `overflow-wrap`.
+- **Cambio de UI**: en [frontend/src/App.jsx](frontend/src/App.jsx), las tarjetas de la vista
+  "Por comprar" reciben la clase `shopping-item` para aplicarles ese layout sin alterar la
+  lista maestra.
+- **Validación**: `cd frontend; npm run build` terminó correctamente con Vite y generó el
+  frontend en `frontend/dist`.
+- **Pendiente**: sincronizar `frontend/dist` con S3 e invalidar CloudFront para comprobar el
+  cambio en el dispositivo móvil publicado.
+
+### 6.6 Ajuste de tarjetas en "Lista maestra"
+- **Síntoma**: las tarjetas de productos se volvían demasiado altas en móvil y la categoría
+  podía quedar separada visualmente del nombre; los botones de acciones terminaban muy abajo.
+- **Causa**: la regla móvil convertía las tarjetas maestras en una sola columna y el contenido
+  de `.product-name` se comportaba como elementos flexibles independientes.
+- **Solución**: en [frontend/src/App.jsx](frontend/src/App.jsx), las tarjetas no editadas de
+  la lista maestra reciben la clase `master-item`. En [frontend/src/App.css](frontend/src/App.css)
+  esa clase usa dos columnas en móvil: contenido flexible a la izquierda y acciones compactas
+  a la derecha; el nombre y sus metadatos se muestran como un bloque continuo.
+- **Validación**: `cd frontend; npm run build` terminó correctamente con Vite y regeneró
+  `frontend/dist`.
+- **Pendiente**: publicar el build actualizado en S3 e invalidar CloudFront.
+
 ## 7. Historial de avance (qué se construyó, en orden)
 
 1. Pipeline base con SAM + GitHub Actions, autenticación con llaves (luego migrado a OIDC).
@@ -179,6 +211,12 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
    maestra, edición en línea).
 10. Modal de confirmación (`ConfirmDialog.jsx`) para reemplazar el `window.confirm()` nativo
     al eliminar productos — más amigable para la ama de casa/usuario final.
+11. Ajuste responsive inicial: búsqueda, filtro y formulario de alta se adaptan a pantallas
+  pequeñas ocupando el ancho disponible.
+12. Ajuste responsive de "Por comprar": nombres largos se envuelven y el botón "Comprado"
+  permanece en una columna independiente.
+13. Ajuste responsive de "Lista maestra": las tarjetas conservan una altura compacta y las
+  acciones permanecen alineadas junto al producto en pantallas pequeñas.
 
 ## 8. Pendientes / backlog priorizado
 

@@ -325,10 +325,26 @@
     white-space: nowrap;
   }
 
+  .master-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  .master-item .product-name {
+    display: block;
+  }
+
   .item-actions {
     width: 100%;
     justify-content: flex-end;
     flex-wrap: wrap;
+  }
+
+  .master-item .item-actions {
+    width: auto;
+    flex-wrap: nowrap;
   }
 }
 
