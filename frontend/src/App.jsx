@@ -221,7 +221,7 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
               <li className="hint">No hay productos pendientes 🎉</li>
             )}
             {filteredShoppingList.map((item) => (
-              <li key={item.id} className="product-item">
+              <li key={item.id} className="product-item shopping-item">
                 <span className="product-name">
                   {item.name}
                   <small>
