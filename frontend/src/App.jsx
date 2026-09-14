@@ -16,6 +16,91 @@ const TABS = {
   MASTER: "master",
 }
 
+const SWIPE_THRESHOLD = 96
+
+function ShoppingItem({ item, onBought }) {
+  const [swipeStart, setSwipeStart] = useState(null)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+
+  function handlePointerDown(event) {
+    if (event.pointerType === "mouse" && event.button !== 0) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setSwipeStart({ x: event.clientX, y: event.clientY })
+    setSwipeOffset(0)
+    setIsSwiping(false)
+  }
+
+  function handlePointerMove(event) {
+    if (!swipeStart) return
+
+    const deltaX = event.clientX - swipeStart.x
+    const deltaY = event.clientY - swipeStart.y
+
+    if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
+      setSwipeStart(null)
+      setSwipeOffset(0)
+      return
+    }
+
+    if (deltaX <= 0) {
+      setSwipeOffset(0)
+      return
+    }
+
+    setIsSwiping(true)
+    setSwipeOffset(Math.min(deltaX, SWIPE_THRESHOLD + 24))
+  }
+
+  function finishSwipe(event) {
+    if (!swipeStart) return
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    if (swipeOffset >= SWIPE_THRESHOLD) onBought(item.id)
+    setSwipeStart(null)
+    setSwipeOffset(0)
+    setIsSwiping(false)
+  }
+
+  function cancelSwipe() {
+    setSwipeStart(null)
+    setSwipeOffset(0)
+    setIsSwiping(false)
+  }
+
+  return (
+    <li
+      className={`product-item shopping-item${isSwiping ? " is-swiping" : ""}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishSwipe}
+      onPointerCancel={cancelSwipe}
+      style={{ "--swipe-offset": `${swipeOffset}px` }}
+    >
+      <span className="swipe-confirmation" aria-hidden="true">
+        ✓ Comprado
+      </span>
+      <span className="product-name">
+        {item.name}
+        <small>
+          {" "}
+          · {item.category || "General"} · {item.quantity || 1}
+        </small>
+      </span>
+      <button
+        className="btn-bought"
+        aria-label={`Marcar ${item.name} como comprado`}
+        title="Marcar como comprado"
+        onClick={() => onBought(item.id)}
+      >
+        ✓
+      </button>
+    </li>
+  )
+}
+
 function playProductAddedSound() {
   const AudioContext = window.AudioContext || window.webkitAudioContext
   if (!AudioContext) return null
@@ -250,21 +335,7 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
               <li className="hint">No hay productos pendientes 🎉</li>
             )}
             {filteredShoppingList.map((item) => (
-              <li key={item.id} className="product-item shopping-item">
-                <span className="product-name">
-                  {item.name}
-                  <small>
-                    {" "}
-                    · {item.category || "General"} · {item.quantity || 1}
-                  </small>
-                </span>
-                <button
-                  className="btn-bought"
-                  onClick={() => handleBought(item.id)}
-                >
-                  ✔ Comprado
-                </button>
-              </li>
+              <ShoppingItem key={item.id} item={item} onBought={handleBought} />
             ))}
           </ul>
         )}

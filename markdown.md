@@ -16,4 +16,6 @@ El último cambio documentado corresponde a la mejora de responsividad móvil de
 	y las tarjetas ya no crecen innecesariamente en el celular.
 - Al agregar un producto desde "Lista maestra" a "Por comprar", se reproduce un tono corto de
 	confirmación. Crear un producto nuevo en la lista maestra no reproduce sonido.
+- En "Por comprar", el usuario puede deslizar una tarjeta hacia la derecha para marcarla como
+	comprada; se conserva un control compacto alternativo para accesibilidad y escritorio.
 - La compilación de producción fue validada con `npm run build`.

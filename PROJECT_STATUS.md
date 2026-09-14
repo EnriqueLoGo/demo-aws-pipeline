@@ -210,6 +210,24 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
 - **Validación**: `cd frontend; npm run build` terminó correctamente. `npm run lint` también
   terminó, mostrando únicamente la advertencia preexistente del efecto de carga en `App.jsx`.
 
+### 6.8 Marcar como comprado deslizando la tarjeta
+- **Solicitud**: evitar el botón grande "Comprado" y permitir que el usuario marque un producto
+  deslizando su tarjeta hacia la derecha en la vista "Por comprar".
+- **Implementación**: en [frontend/src/App.jsx](frontend/src/App.jsx) se agregó el componente
+  `ShoppingItem`, que detecta gestos con Pointer Events. El producto se marca como comprado al
+  superar un umbral horizontal de `96px` y reutiliza la función existente `handleBought`.
+- **Comportamiento móvil**: el gesto solo se considera horizontal; el desplazamiento vertical
+  normal de la pantalla sigue funcionando. La tarjeta muestra el movimiento y una confirmación
+  visual mientras se desliza.
+- **Accesibilidad y respaldo**: el botón grande fue reemplazado por un control compacto con
+  etiqueta accesible, `title` y acción equivalente para usuarios que no puedan deslizar o usen
+  desktop.
+- **Backend**: no fue necesario modificar la API ni el modelo de datos.
+- **Validación**: `cd frontend; npm run build` terminó correctamente. `npm run lint` terminó
+  con la advertencia preexistente del efecto de carga en `App.jsx`.
+- **Pendiente**: publicar `frontend/dist` en S3, invalidar CloudFront y probar el gesto en el
+  dispositivo móvil real, especialmente con nombres largos y desplazamiento vertical.
+
 ## 7. Historial de avance (qué se construyó, en orden)
 
 1. Pipeline base con SAM + GitHub Actions, autenticación con llaves (luego migrado a OIDC).
@@ -231,6 +249,8 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
   permanece en una columna independiente.
 13. Ajuste responsive de "Lista maestra": las tarjetas conservan una altura compacta y las
   acciones permanecen alineadas junto al producto en pantallas pequeñas.
+14. Interacción de compra por deslizamiento: deslizar hacia la derecha marca el producto como
+  comprado y deja un control compacto alternativo.
 
 ## 8. Pendientes / backlog priorizado
 
