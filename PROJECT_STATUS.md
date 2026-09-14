@@ -228,6 +228,17 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
 - **Pendiente**: publicar `frontend/dist` en S3, invalidar CloudFront y probar el gesto en el
   dispositivo móvil real, especialmente con nombres largos y desplazamiento vertical.
 
+### 6.9 Corrección visual de confirmación del deslizamiento
+- **Síntoma**: el texto "✓ Comprado" aparecía traslapado sobre todas las tarjetas desde que se
+  cargaba la pantalla, aunque el usuario todavía no hubiera iniciado un gesto.
+- **Causa**: `.swipe-confirmation` tenía `display: flex` permanentemente y no contaba con un
+  estado visual oculto inicial.
+- **Solución**: en [frontend/src/App.css](frontend/src/App.css), la confirmación inicia con
+  `opacity: 0` y solo pasa a visible cuando la tarjeta recibe la clase `.is-swiping`.
+- **Resultado**: la lista queda limpia al cargar; la indicación "✓ Comprado" aparece únicamente
+  mientras el usuario desliza una tarjeta hacia la derecha.
+- **Validación**: `cd frontend; npm run build` terminó correctamente y regeneró `frontend/dist`.
+
 ## 7. Historial de avance (qué se construyó, en orden)
 
 1. Pipeline base con SAM + GitHub Actions, autenticación con llaves (luego migrado a OIDC).

@@ -121,6 +121,12 @@
   color: #1b6e3c;
   font-weight: 700;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.shopping-item.is-swiping .swipe-confirmation {
+  opacity: 1;
 }
 
 .product-name {

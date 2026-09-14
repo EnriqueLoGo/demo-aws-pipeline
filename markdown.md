@@ -18,4 +18,6 @@ El último cambio documentado corresponde a la mejora de responsividad móvil de
 	confirmación. Crear un producto nuevo en la lista maestra no reproduce sonido.
 - En "Por comprar", el usuario puede deslizar una tarjeta hacia la derecha para marcarla como
 	comprada; se conserva un control compacto alternativo para accesibilidad y escritorio.
+- La confirmación visual del deslizamiento permanece oculta al cargar y solo aparece mientras
+	el usuario realiza el gesto, evitando traslapes en las tarjetas.
 - La compilación de producción fue validada con `npm run build`.
