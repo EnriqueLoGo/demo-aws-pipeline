@@ -16,6 +16,33 @@ const TABS = {
   MASTER: "master",
 }
 
+function playProductAddedSound() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext
+  if (!AudioContext) return null
+
+  const audioContext = new AudioContext()
+  audioContext.resume()
+
+  return () => {
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    const startTime = audioContext.currentTime
+
+    oscillator.type = "sine"
+    oscillator.frequency.setValueAtTime(660, startTime)
+    oscillator.frequency.setValueAtTime(880, startTime + 0.1)
+    gain.gain.setValueAtTime(0.0001, startTime)
+    gain.gain.exponentialRampToValueAtTime(0.16, startTime + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.22)
+
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start(startTime)
+    oscillator.stop(startTime + 0.22)
+    oscillator.addEventListener("ended", () => audioContext.close())
+  }
+}
+
 export default function App() {
   const [tab, setTab] = useState(TABS.SHOPPING)
   const [shoppingList, setShoppingList] = useState([])
@@ -91,8 +118,10 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
   }
 
   async function handleNeed(id) {
+    const playSound = playProductAddedSound()
     try {
       await markNeeded(id)
+      playSound?.()
       loadAll()
     } catch (err) {
       setError(err.message)

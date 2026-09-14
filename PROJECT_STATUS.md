@@ -196,6 +196,20 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
   `frontend/dist`.
 - **Pendiente**: publicar el build actualizado en S3 e invalidar CloudFront.
 
+### 6.7 Sonido al agregar un producto a "Por comprar"
+- **Solicitud**: reproducir una confirmación sonora cuando un producto de la lista maestra se
+  agrega a la lista de compras; no reproducir sonido al dar de alta un producto nuevo.
+- **Implementación**: en [frontend/src/App.jsx](frontend/src/App.jsx), `handleNeed` prepara un
+  contexto de Web Audio desde el toque del usuario y reproduce un tono corto únicamente después
+  de que `markNeeded` confirma correctamente la operación.
+- **Compatibilidad**: el sonido se genera con Web Audio API, sin archivo adicional ni dependencia
+  externa. El contexto se prepara durante el clic para evitar bloqueos de reproducción automática
+  en navegadores móviles.
+- **Error de API**: si la operación falla, no se reproduce el sonido y se conserva el manejo de
+  error existente.
+- **Validación**: `cd frontend; npm run build` terminó correctamente. `npm run lint` también
+  terminó, mostrando únicamente la advertencia preexistente del efecto de carga en `App.jsx`.
+
 ## 7. Historial de avance (qué se construyó, en orden)
 
 1. Pipeline base con SAM + GitHub Actions, autenticación con llaves (luego migrado a OIDC).

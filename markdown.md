@@ -14,4 +14,6 @@ El último cambio documentado corresponde a la mejora de responsividad móvil de
 	debajo de la tarjeta.
 - En "Lista maestra", las acciones de cada producto permanecen alineadas junto al contenido
 	y las tarjetas ya no crecen innecesariamente en el celular.
+- Al agregar un producto desde "Lista maestra" a "Por comprar", se reproduce un tono corto de
+	confirmación. Crear un producto nuevo en la lista maestra no reproduce sonido.
 - La compilación de producción fue validada con `npm run build`.
