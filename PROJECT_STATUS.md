@@ -265,25 +265,127 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
 
 ## 8. Pendientes / backlog priorizado
 
-Ideas propuestas y aún no iniciadas (el usuario elige el orden):
+Ideas propuestas y aún no iniciadas, ordenadas por impacto y riesgo:
 
 1. ~~Confirmación visual (modal) al eliminar~~ ✅ **Hecho** (paso 9-10 arriba).
-2. **Categorías o cantidad**: agregar campo `quantity` y/o `category` (ej. lácteos, limpieza)
-   al modelo de producto. Requiere cambios en `function_lambda.py` (create/update) y en el
-   formulario del frontend.
-3. **Buscador/filtro** en la lista maestra (útil cuando crezca a 50+ productos).
-4. **Indicador de quién agregó/compró qué** (multi-usuario: 4 socios + 2 asistentes, aunque
+2. **Deshacer después de marcar comprado**: mostrar una acción temporal para revertir un
+   deslizamiento accidental.
+3. **Guía visual del gesto**: indicar de forma discreta, preferentemente solo la primera vez,
+   que una tarjeta puede deslizarse hacia la derecha.
+4. **Decidir el futuro del sonido**: corregirlo en dispositivos móviles o retirarlo si no aporta
+   valor. El código actual existe, pero el sonido no se escuchó durante la prueba real.
+5. **Indicador de quién agregó/compró qué** (multi-usuario: 4 socios + 2 asistentes, aunque
    este dato viene de otro proyecto del usuario — verificar si aplica aquí).
-5. **Historial de compras** (qué se compró y cuándo, posiblemente nueva tabla o atributo).
-6. **Restringir permisos del rol IAM**: actualmente `GitHubActionsOIDCRole` tiene
+6. **Controles rápidos de cantidad**: usar botones `-` y `+` para facilitar la edición desde
+   celular.
+7. **Categorías predefinidas**: ofrecer categorías comunes y una opción para crear una nueva,
+   sin perder la categoría personalizada actual.
+8. **Historial de compras**: registrar producto, cantidad, fecha/hora y usuario que lo marcó
+   como comprado; probablemente requiere una tabla o entidad adicional.
+9. **Restringir permisos del rol IAM**: actualmente `GitHubActionsOIDCRole` tiene
    `AdministratorAccess` (amplio, usado para destrabar la demo rápido). Se debe crear una
    policy específica con solo los permisos que `sam deploy` realmente necesita
    (CloudFormation, Lambda, API Gateway, DynamoDB, S3, CloudFront, IAM PassRole limitado).
-7. (Sugerido, no explícitamente pedido aún) Agregar **Error Boundary** en React para evitar
-   pantallas en blanco ante errores inesperados (ver 6.3).
-8. (Sugerido) Endpoint o proceso para limpiar/migrar datos corruptos como el de 6.4.
+10. **Error Boundary** en React para evitar pantallas en blanco ante errores inesperados (ver 6.3).
+11. **Modo offline real**: permitir consultar y modificar la lista sin conexión y sincronizar
+    los cambios cuando vuelva la conectividad.
+12. **Autenticación y permisos**: agregar usuarios, roles y control de acceso si la aplicación
+    deja de ser exclusivamente familiar.
+13. **Limpieza/migración de datos**: endpoint o proceso controlado para registros corruptos como
+    el descrito en 6.4.
 
-## 9. Preferencia de trabajo del usuario (IMPORTANTE para cualquier IA que continúe)
+### Estado de funcionalidades que ya existen
+
+- `quantity` y `category` ya están implementados en backend, frontend y modelo de datos.
+- Búsqueda y filtro por categoría ya están implementados en ambas vistas.
+- Crear, editar, eliminar, marcar como necesario y marcar como comprado ya están implementados.
+- El gesto de deslizar hacia la derecha ya está implementado en "Por comprar".
+- El sonido al agregar a "Por comprar" está implementado, pero no está validado como confiable
+  en dispositivos móviles reales.
+- La responsividad móvil ha sido ajustada y validada mediante build; cada modificación visual
+  importante debe comprobarse también en un teléfono real.
+
+### Orden recomendado de implementación
+
+1. Implementar "Deshacer" después de marcar como comprado.
+2. Probar el gesto en Android con nombres cortos, nombres largos y desplazamiento vertical.
+3. Agregar una guía visual de uso del gesto, mostrada una sola vez o hasta que el usuario la
+   descarte.
+4. Resolver o retirar el sonido que actualmente no se escucha en el dispositivo móvil.
+5. Mejorar cantidades y categorías para uso táctil.
+6. Agregar historial de compras.
+7. Agregar autenticación, usuarios y permisos solo cuando el alcance lo requiera.
+8. Fortalecer offline, Error Boundary y permisos IAM como trabajo técnico de madurez.
+
+## 9. Guía de continuidad para otra AI
+
+La siguiente instrucción puede copiarse junto con este repositorio para que otra AI continúe el
+trabajo correctamente:
+
+```text
+Estoy trabajando en el proyecto demo-aws-pipeline.
+
+Lee primero PROJECT_STATUS.md y markdown.md antes de proponer o modificar código. No reconstruyas
+el proyecto desde cero. Identifica qué está terminado, qué está pendiente y cuál es el siguiente
+cambio recomendado.
+
+Arquitectura actual:
+- AWS SAM
+- Lambda Python 3.12
+- API Gateway HTTP API
+- DynamoDB
+- React + Vite + PWA
+- S3 + CloudFront
+- GitHub Actions con ambientes dev, staging y prod
+
+Reglas de trabajo:
+- Trabaja un cambio pequeño a la vez.
+- Explica primero la causa, el objetivo y los archivos que se modificarán.
+- El usuario quiere aprender y escribir el código: entrega la ubicación exacta y el código
+  necesario, pero no edites archivos directamente salvo que lo solicite de forma explícita.
+- El usuario ejecuta git add, git commit y git push desde Git Bash.
+- No hagas commit ni push.
+- Después de cada cambio ejecuta una validación concreta.
+- Para frontend usa `cd frontend; npm run build` y `npm run lint`.
+- No modifiques backend, AWS o pipeline cuando el cambio sea solamente visual.
+- Conserva la responsividad móvil y prueba nombres largos y gestos táctiles.
+- Actualiza PROJECT_STATUS.md al completar una funcionalidad importante.
+- No elimines cambios existentes sin entenderlos y documentarlos.
+
+Estado funcional actual:
+- Vistas "Por comprar" y "Lista maestra".
+- Crear, editar y eliminar productos.
+- Categorías, cantidades, búsqueda y filtro.
+- Pasar productos de la lista maestra a "Por comprar".
+- Marcar productos como comprados mediante deslizar hacia la derecha.
+- Control compacto alternativo para marcar comprado.
+- Frontend publicado mediante S3 y CloudFront.
+- El sonido al agregar a "Por comprar" está en el código, pero no se escuchó en el celular y
+  debe considerarse pendiente de resolver o retirar.
+
+Siguiente trabajo recomendado:
+Implementar "Deshacer" después de marcar un producto como comprado. Debe proteger contra un
+deslizamiento accidental, funcionar en móvil y no cambiar el contrato actual de la API sin una
+razón clara.
+
+Antes de implementar, entrega:
+1. Diagnóstico breve del flujo actual.
+2. Diseño de la solución.
+3. Archivos y funciones que cambiarían.
+4. Criterios de aceptación.
+5. Una sola acción inicial para avanzar paso a paso.
+```
+
+### Criterios generales para futuras implementaciones
+
+- La acción debe ser comprensible sin capacitación extensa.
+- Los gestos nunca deben impedir el scroll vertical.
+- Las acciones destructivas o irreversibles deben tener recuperación cuando sea posible.
+- Cada cambio debe conservar una alternativa accesible que no dependa de gestos.
+- Las pruebas deben cubrir celular pequeño, nombres largos, datos vacíos y errores de API.
+- La documentación debe registrar causa, solución, archivos, validación y pendientes.
+
+## 10. Preferencia de trabajo del usuario (IMPORTANTE para cualquier IA que continúe)
 
 - El usuario **quiere escribir el código él mismo** para aprender el proceso.
 - El asistente debe **dar el código exacto y la ubicación** (archivo, snippet, instrucciones
@@ -294,12 +396,18 @@ Ideas propuestas y aún no iniciadas (el usuario elige el orden):
 - Ritmo de trabajo preferido: un cambio pequeño y verificable a la vez (código → probar local
   → push → validar pipeline → validar en producción → siguiente paso), no lotes grandes.
 
-## 10. Datos de referencia rápida
+## 11. Datos de referencia rápida
 
 - Cuenta AWS: `112036182812`, región `us-east-1`.
 - Repo GitHub: `EnriqueLoGo/demo-aws-pipeline` (público).
 - Rol OIDC: `arn:aws:iam::112036182812:role/GitHubActionsOIDCRole`.
 - Stacks CloudFormation: `pantry-dev`, `pantry-staging`, `pantry-prod`.
+- Outputs relevantes de cada stack: `ApiUrl`, `FrontendUrl`, `FrontendBucketName`,
+  `FrontendDistributionId`, `TableName`, `FunctionName`.
+- Node local: usar `cmd /c "npm ..."` o `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+  para evitar el bloqueo de ejecución de scripts de PowerShell con `npm.ps1`.
+- Para desarrollo local del frontend: crear `frontend/.env.local` (no se sube a git) con
+  `VITE_API_URL=<ApiUrl del ambiente dev>`.
 - Outputs relevantes de cada stack: `ApiUrl`, `FrontendUrl`, `FrontendBucketName`,
   `FrontendDistributionId`, `TableName`, `FunctionName`.
 - Node local: usar `cmd /c "npm ..."` o `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`

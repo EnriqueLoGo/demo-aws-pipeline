@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import {
   getMasterList,
   getShoppingList,
@@ -147,6 +147,21 @@ export default function App() {
   const [editQuantity, setEditQuantity] = useState(1)
   const [categoryFilter, setCategoryFilter] = useState("ALL")
 
+  // Estado para el "Deshacer" después de marcar como comprado
+  const [pendingBought, setPendingBought] = useState(null)
+  // { item: {...}, timer: timeoutId }
+  const pendingBoughtRef = useRef(null)
+
+  // Confirma la operación pendiente (llama a la API)
+  const flushPendingBought = useCallback(async (itemId) => {
+    try {
+      await markBought(itemId)
+    } catch (err) {
+      setError(err.message)
+      loadAll()
+    }
+  }, [loadAll])
+
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError("")
@@ -192,14 +207,40 @@ const filteredMasterList = masterList.filter((item) => {
 
 const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
 
-  async function handleBought(id) {
-    setShoppingList((prev) => prev.filter((item) => item.id !== id))
-    try {
-      await markBought(id)
-    } catch (err) {
-      setError(err.message)
-      loadAll()
+  function handleBought(id) {
+    // Si ya había un pendiente, lo confirmamos de inmediato antes de crear el nuevo
+    if (pendingBoughtRef.current) {
+      clearTimeout(pendingBoughtRef.current.timer)
+      flushPendingBought(pendingBoughtRef.current.item.id)
+      pendingBoughtRef.current = null
     }
+
+    const item = shoppingList.find((p) => p.id === id)
+    if (!item) return
+
+    // Quitamos el ítem de la lista visualmente
+    setShoppingList((prev) => prev.filter((p) => p.id !== id))
+
+    // Creamos el timer de 5 segundos
+    const timer = setTimeout(() => {
+      setPendingBought(null)
+      pendingBoughtRef.current = null
+      flushPendingBought(id)
+    }, 5000)
+
+    const pending = { item, timer }
+    pendingBoughtRef.current = pending
+    setPendingBought(pending)
+  }
+
+  function handleUndoBought() {
+    if (!pendingBoughtRef.current) return
+    clearTimeout(pendingBoughtRef.current.timer)
+    const { item } = pendingBoughtRef.current
+    // Devolvemos el ítem a la lista
+    setShoppingList((prev) => [...prev, item])
+    setPendingBought(null)
+    pendingBoughtRef.current = null
   }
 
   async function handleNeed(id) {
@@ -438,6 +479,15 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
           </>
         )}
       </main>
+
+      {pendingBought && (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <span>✓ {pendingBought.item.name} marcado como comprado</span>
+          <button className="btn-undo" onClick={handleUndoBought}>
+            Deshacer
+          </button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmDeleteId !== null}

@@ -6,6 +6,11 @@ Mi primer proyecto conectado con AWS nativo y CI/CD
 La documentación de continuidad, arquitectura, endpoints, infraestructura, pipeline, incidentes
 resueltos y cambios recientes se mantiene en [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
+Para continuar el proyecto con otra AI, debe leer primero la sección "Guía de continuidad para
+otra AI" dentro de [PROJECT_STATUS.md](PROJECT_STATUS.md). Esa sección incluye el estado actual,
+las reglas de trabajo, el backlog priorizado, los criterios de aceptación y el siguiente cambio
+recomendado.
+
 El último cambio documentado corresponde a la mejora de responsividad móvil del frontend:
 
 - El formulario de alta de productos ahora se apila correctamente en pantallas pequeñas.
