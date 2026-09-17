@@ -152,16 +152,6 @@ export default function App() {
   // { item: {...}, timer: timeoutId }
   const pendingBoughtRef = useRef(null)
 
-  // Confirma la operación pendiente (llama a la API)
-  const flushPendingBought = useCallback(async (itemId) => {
-    try {
-      await markBought(itemId)
-    } catch (err) {
-      setError(err.message)
-      loadAll()
-    }
-  }, [loadAll])
-
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError("")
@@ -178,6 +168,17 @@ export default function App() {
       setLoading(false)
     }
   }, [])
+
+  // Confirma la operación pendiente (llama a la API)
+  // Declarada después de loadAll para que pueda referenciarla correctamente
+  const flushPendingBought = useCallback(async (itemId) => {
+    try {
+      await markBought(itemId)
+    } catch (err) {
+      setError(err.message)
+      loadAll()
+    }
+  }, [loadAll])
 
   useEffect(() => {
     loadAll()
