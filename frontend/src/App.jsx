@@ -450,7 +450,13 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                     </form>
                   </li>
                 ) : (
-                  <li key={item.id} className="product-item master-item">
+                  <li
+                    key={item.id}
+                    className="product-item master-item"
+                    onDoubleClick={() => startEdit(item)}
+                    style={{ touchAction: "manipulation" }}
+                    title="Doble toque para editar"
+                  >
                     <span className="product-name">
                       {item.name}
                       <small>
@@ -470,7 +476,6 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                         </button>
                       )}
                       {item.needed && <span className="hint">En la lista</span>}
-                      <button className="btn-edit" onClick={() => startEdit(item)}>✎</button>
                       <button className="btn-delete" onClick={() => askDelete(item.id)}>🗑️</button>
                     </div>
                   </li>
