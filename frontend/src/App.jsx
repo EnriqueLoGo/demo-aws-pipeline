@@ -128,10 +128,12 @@ function playProductAddedSound() {
   }
 }
 
-function MasterItem({ item, onEdit, onDelete }) {
+function MasterItem({ item, onEdit, onDelete, onNeed }) {
   const [swipeStart, setSwipeStart] = useState(null)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
+  // "right" = eliminar, "left" = agregar a lista
+  const [swipeDir, setSwipeDir] = useState(null)
 
   function handlePointerDown(event) {
     if (event.pointerType === "mouse" && event.button !== 0) return
@@ -139,6 +141,7 @@ function MasterItem({ item, onEdit, onDelete }) {
     setSwipeStart({ x: event.clientX, y: event.clientY })
     setSwipeOffset(0)
     setIsSwiping(false)
+    setSwipeDir(null)
   }
 
   function handlePointerMove(event) {
@@ -151,17 +154,24 @@ function MasterItem({ item, onEdit, onDelete }) {
     if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
       setSwipeStart(null)
       setSwipeOffset(0)
+      setSwipeDir(null)
       return
     }
 
-    // Solo permitimos deslizamiento a la derecha
-    if (deltaX <= 0) {
+    // Izquierda solo si el producto no está ya en la lista
+    if (deltaX < 0 && item.needed) {
       setSwipeOffset(0)
       return
     }
 
+    const dir = deltaX >= 0 ? "right" : "left"
+    setSwipeDir(dir)
     setIsSwiping(true)
-    setSwipeOffset(Math.min(deltaX, SWIPE_THRESHOLD + 24))
+    setSwipeOffset(
+      deltaX >= 0
+        ? Math.min(deltaX, SWIPE_THRESHOLD + 24)
+        : Math.max(deltaX, -(SWIPE_THRESHOLD + 24))
+    )
   }
 
   function finishSwipe(event) {
@@ -171,31 +181,45 @@ function MasterItem({ item, onEdit, onDelete }) {
     }
 
     if (swipeOffset >= SWIPE_THRESHOLD) onDelete(item.id)
+    else if (swipeOffset <= -SWIPE_THRESHOLD) onNeed(item.id)
+
     setSwipeStart(null)
     setSwipeOffset(0)
     setIsSwiping(false)
+    setSwipeDir(null)
   }
 
   function cancelSwipe() {
     setSwipeStart(null)
     setSwipeOffset(0)
     setIsSwiping(false)
+    setSwipeDir(null)
   }
+
+  const isSwipingRight = isSwiping && swipeDir === "right"
+  const isSwipingLeft  = isSwiping && swipeDir === "left"
 
   return (
     <li
-      className={`product-item master-item master-swipe-item${isSwiping ? " is-swiping-delete" : ""}`}
+      className={`product-item master-item master-swipe-item${isSwipingRight ? " is-swiping-delete" : ""}${isSwipingLeft ? " is-swiping-need" : ""}`}
       onDoubleClick={() => onEdit(item)}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finishSwipe}
       onPointerCancel={cancelSwipe}
       style={{ "--swipe-offset": `${swipeOffset}px` }}
-      title="Doble toque para editar · Desliza → para eliminar"
+      title="Doble toque para editar · → eliminar · ← agregar a lista"
     >
+      {/* Fondo rojo — eliminar (derecha) */}
       <span className="master-delete-hint" aria-hidden="true">
         🗑 Eliminar
       </span>
+      {/* Fondo verde — agregar a lista (izquierda) */}
+      {!item.needed && (
+        <span className="master-need-hint" aria-hidden="true">
+          ✓ A la lista
+        </span>
+      )}
       <span
         className="product-name"
         style={{ transform: "translateX(var(--swipe-offset, 0px))", transition: isSwiping ? "none" : "transform 160ms ease" }}
@@ -208,9 +232,6 @@ function MasterItem({ item, onEdit, onDelete }) {
         className="item-actions"
         style={{ transform: "translateX(var(--swipe-offset, 0px))", transition: isSwiping ? "none" : "transform 160ms ease" }}
       >
-        {!item.needed && (
-          <span className="hint-inline">En la lista</span>
-        )}
         {item.needed && <span className="hint-inline">✓ En lista</span>}
       </div>
     </li>
@@ -544,6 +565,7 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                     item={item}
                     onEdit={startEdit}
                     onDelete={askDelete}
+                    onNeed={handleNeed}
                   />
                 )
               )}

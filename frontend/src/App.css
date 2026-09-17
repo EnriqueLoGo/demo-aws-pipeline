@@ -526,3 +526,25 @@
   font-size: 13px;
   color: #888;
 }
+
+/* MasterItem — gesto deslizar izquierda para agregar a lista */
+.master-swipe-item.is-swiping-need::before {
+  background: #1b6e3c;
+  opacity: 0.12;
+}
+
+.master-need-hint {
+  position: absolute;
+  inset: 0 16px 0 auto;
+  display: flex;
+  align-items: center;
+  color: #1b6e3c;
+  font-weight: 700;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.master-swipe-item.is-swiping-need .master-need-hint {
+  opacity: 1;
+}
