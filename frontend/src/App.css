@@ -487,3 +487,41 @@
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* MasterItem — gesto deslizar derecha para eliminar */
+.master-swipe-item {
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.master-swipe-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #c0392b;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+.master-delete-hint {
+  position: absolute;
+  inset: 0 auto 0 16px;
+  display: flex;
+  align-items: center;
+  color: #c0392b;
+  font-weight: 700;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.master-swipe-item.is-swiping-delete .master-delete-hint {
+  opacity: 1;
+}
+
+.hint-inline {
+  font-size: 13px;
+  color: #888;
+}

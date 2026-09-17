@@ -128,6 +128,95 @@ function playProductAddedSound() {
   }
 }
 
+function MasterItem({ item, onEdit, onDelete }) {
+  const [swipeStart, setSwipeStart] = useState(null)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+
+  function handlePointerDown(event) {
+    if (event.pointerType === "mouse" && event.button !== 0) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setSwipeStart({ x: event.clientX, y: event.clientY })
+    setSwipeOffset(0)
+    setIsSwiping(false)
+  }
+
+  function handlePointerMove(event) {
+    if (!swipeStart) return
+
+    const deltaX = event.clientX - swipeStart.x
+    const deltaY = event.clientY - swipeStart.y
+
+    // Si el gesto es más vertical que horizontal, lo ignoramos (scroll normal)
+    if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
+      setSwipeStart(null)
+      setSwipeOffset(0)
+      return
+    }
+
+    // Solo permitimos deslizamiento a la derecha
+    if (deltaX <= 0) {
+      setSwipeOffset(0)
+      return
+    }
+
+    setIsSwiping(true)
+    setSwipeOffset(Math.min(deltaX, SWIPE_THRESHOLD + 24))
+  }
+
+  function finishSwipe(event) {
+    if (!swipeStart) return
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+
+    if (swipeOffset >= SWIPE_THRESHOLD) onDelete(item.id)
+    setSwipeStart(null)
+    setSwipeOffset(0)
+    setIsSwiping(false)
+  }
+
+  function cancelSwipe() {
+    setSwipeStart(null)
+    setSwipeOffset(0)
+    setIsSwiping(false)
+  }
+
+  return (
+    <li
+      className={`product-item master-item master-swipe-item${isSwiping ? " is-swiping-delete" : ""}`}
+      onDoubleClick={() => onEdit(item)}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishSwipe}
+      onPointerCancel={cancelSwipe}
+      style={{ "--swipe-offset": `${swipeOffset}px`, touchAction: "manipulation" }}
+      title="Doble toque para editar · Desliza → para eliminar"
+    >
+      <span className="master-delete-hint" aria-hidden="true">
+        🗑 Eliminar
+      </span>
+      <span
+        className="product-name"
+        style={{ transform: "translateX(var(--swipe-offset, 0px))", transition: isSwiping ? "none" : "transform 160ms ease" }}
+      >
+        {item.name}
+        <small> · {item.category || "General"} · {item.quantity || 1}</small>
+        {item.type === "FIXED" && <span className="badge">FIJO</span>}
+      </span>
+      <div
+        className="item-actions"
+        style={{ transform: "translateX(var(--swipe-offset, 0px))", transition: isSwiping ? "none" : "transform 160ms ease" }}
+      >
+        {!item.needed && (
+          <span className="hint-inline">En la lista</span>
+        )}
+        {item.needed && <span className="hint-inline">✓ En lista</span>}
+      </div>
+    </li>
+  )
+}
+
 export default function App() {
   const [tab, setTab] = useState(TABS.SHOPPING)
   const [shoppingList, setShoppingList] = useState([])
@@ -450,35 +539,12 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                     </form>
                   </li>
                 ) : (
-                  <li
+                  <MasterItem
                     key={item.id}
-                    className="product-item master-item"
-                    onDoubleClick={() => startEdit(item)}
-                    style={{ touchAction: "manipulation" }}
-                    title="Doble toque para editar"
-                  >
-                    <span className="product-name">
-                      {item.name}
-                      <small>
-                        {" "}
-                        · {item.category || "General"} · {item.quantity || 1}
-                      </small>
-                      {item.type === "FIXED" && <span className="badge">FIJO</span>}
-                    </span>
-
-                    <div className="item-actions">
-                      {!item.needed && (
-                        <button
-                          className="btn-need"
-                          onClick={() => handleNeed(item.id)}
-                        >
-                          + A la lista
-                        </button>
-                      )}
-                      {item.needed && <span className="hint">En la lista</span>}
-                      <button className="btn-delete" onClick={() => askDelete(item.id)}>🗑️</button>
-                    </div>
-                  </li>
+                    item={item}
+                    onEdit={startEdit}
+                    onDelete={askDelete}
+                  />
                 )
               )}
             </ul>
