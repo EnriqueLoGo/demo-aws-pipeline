@@ -190,7 +190,7 @@ function MasterItem({ item, onEdit, onDelete }) {
       onPointerMove={handlePointerMove}
       onPointerUp={finishSwipe}
       onPointerCancel={cancelSwipe}
-      style={{ "--swipe-offset": `${swipeOffset}px`, touchAction: "manipulation" }}
+      style={{ "--swipe-offset": `${swipeOffset}px` }}
       title="Doble toque para editar · Desliza → para eliminar"
     >
       <span className="master-delete-hint" aria-hidden="true">
