@@ -355,13 +355,22 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
   }
 
   async function handleNeed(id) {
+    // Actualización optimista: marcamos needed=true localmente sin esperar al servidor
+    setMasterList((prev) =>
+      prev.map((item) => item.id === id ? { ...item, needed: true } : item)
+    )
+    setShoppingList((prev) => {
+      const item = masterList.find((p) => p.id === id)
+      if (!item || prev.some((p) => p.id === id)) return prev
+      return [...prev, { ...item, needed: true }]
+    })
     const playSound = playProductAddedSound()
     try {
       await markNeeded(id)
       playSound?.()
-      loadAll()
     } catch (err) {
       setError(err.message)
+      loadAll()
     }
   }
 
