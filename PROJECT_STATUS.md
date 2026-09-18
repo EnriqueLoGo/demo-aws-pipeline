@@ -3,7 +3,7 @@
 > Este documento existe para que cualquier persona (o cualquier IA) pueda retomar el proyecto
 > sin necesidad de reconstruir el contexto desde cero. Se actualiza conforme avanza el proyecto.
 >
-> Última actualización: 2026-09-14
+> Última actualización: 2026-09-17
 
 ---
 
@@ -239,6 +239,31 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
   mientras el usuario desliza una tarjeta hacia la derecha.
 - **Validación**: `cd frontend; npm run build` terminó correctamente y regeneró `frontend/dist`.
 
+### 6.10 `flushPendingBought` declarada antes de `loadAll` (pantalla blanca)
+- **Síntoma**: tras el deploy del "Deshacer", la app mostraba pantalla blanca tanto en web
+  como en el dispositivo móvil.
+- **Causa raíz**: `flushPendingBought` fue declarada con `useCallback` antes de `loadAll`.
+  Los `const` con `useCallback` no se elevan (no tienen hoisting), así que cuando
+  `flushPendingBought` intentaba capturar `loadAll` en su closure, `loadAll` aún era
+  `undefined`. El lint señaló exactamente este problema con la advertencia
+  `Cannot access variable while it is being initialized`, que no fue tratada como bloqueante.
+- **Solución**: mover `flushPendingBought` para después de la declaración de `loadAll` en
+  el archivo.
+- **Lección**: las advertencias de lint sobre orden de inicialización de `const`/`useCallback`
+  deben tratarse como errores, no como advertencias ignorables.
+
+### 6.11 Gesto de deslizamiento horizontal no funcionaba en móvil (lista maestra)
+- **Síntoma**: en el dispositivo Android el gesto derecha para eliminar no se activaba;
+  en su lugar se movía toda la página horizontalmente (scroll horizontal visible).
+- **Causa raíz**: el `<li>` de `MasterItem` tenía `touchAction: "manipulation"` como
+  `style` inline, que sobreescribía la regla CSS `touch-action: pan-y` de
+  `.master-swipe-item`. El navegador móvil interpretaba el gesto horizontal como scroll
+  de página en vez de entregárselo al componente.
+- **Solución**: eliminar `touchAction` del `style` inline y agregar `overflow-x: hidden`
+  al contenedor `.app` para prevenir scroll horizontal de página.
+- **Archivos**: [frontend/src/App.jsx](frontend/src/App.jsx),
+  [frontend/src/App.css](frontend/src/App.css).
+
 ## 7. Historial de avance (qué se construyó, en orden)
 
 1. Pipeline base con SAM + GitHub Actions, autenticación con llaves (luego migrado a OIDC).
@@ -250,72 +275,76 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
 7. Fix del bug de parseo de respuestas (`n.map is not a function`, ver 6.3).
 8. Repo hecho público para resolver bloqueo de minutos de Actions (ver 6.2).
 9. **ABC completo** en el backend: se agregaron `PUT /products/{id}` (editar) y
-   `DELETE /products/{id}` (eliminar), con su UI correspondiente (botones ✎ y 🗑️ en la lista
-   maestra, edición en línea).
+   `DELETE /products/{id}` (eliminar), con su UI correspondiente (edición en línea).
 10. Modal de confirmación (`ConfirmDialog.jsx`) para reemplazar el `window.confirm()` nativo
-    al eliminar productos — más amigable para la ama de casa/usuario final.
+    al eliminar productos.
 11. Ajuste responsive inicial: búsqueda, filtro y formulario de alta se adaptan a pantallas
-  pequeñas ocupando el ancho disponible.
-12. Ajuste responsive de "Por comprar": nombres largos se envuelven y el botón "Comprado"
-  permanece en una columna independiente.
-13. Ajuste responsive de "Lista maestra": las tarjetas conservan una altura compacta y las
-  acciones permanecen alineadas junto al producto en pantallas pequeñas.
-14. Interacción de compra por deslizamiento: deslizar hacia la derecha marca el producto como
-  comprado y deja un control compacto alternativo.
+    pequeñas ocupando el ancho disponible.
+12. Ajuste responsive de "Por comprar": nombres largos se envuelven, botón fijo en columna.
+13. Ajuste responsive de "Lista maestra": tarjetas compactas con acciones alineadas.
+14. Interacción de compra por deslizamiento en "Por comprar": deslizar derecha marca comprado.
+15. **"Deshacer" después de marcar como comprado**: toast de 5 segundos con botón Deshacer;
+    la llamada al backend se hace solo si el usuario no deshace en ese tiempo.
+16. **Doble tap para editar** en lista maestra: reemplazó el botón lápiz ✎.
+17. **Deslizar derecha para eliminar** en lista maestra: componente `MasterItem` con Pointer
+    Events, abre el modal de confirmación existente al superar el umbral.
+18. **Deslizar izquierda para agregar a lista** en lista maestra: mismo componente `MasterItem`,
+    gesto `deltaX < 0` llama `handleNeed`. Botón "+ A la lista" eliminado.
+19. **Actualización optimista en `handleNeed`**: elimina el parpadeo/refresh visible al agregar
+    a la lista — el estado local se actualiza al instante, la API se llama en segundo plano.
+20. **Hint de gestos de primera vez**: banner verde en lista maestra con los tres gestos.
+    Se cierra con "Entendido" o se auto-descarta a los 8 segundos. Guardado en `localStorage`.
 
 ## 8. Pendientes / backlog priorizado
 
 Ideas propuestas y aún no iniciadas, ordenadas por impacto y riesgo:
 
-1. ~~Confirmación visual (modal) al eliminar~~ ✅ **Hecho** (paso 9-10 arriba).
-2. **Deshacer después de marcar comprado**: mostrar una acción temporal para revertir un
-   deslizamiento accidental.
-3. **Guía visual del gesto**: indicar de forma discreta, preferentemente solo la primera vez,
-   que una tarjeta puede deslizarse hacia la derecha.
-4. **Decidir el futuro del sonido**: corregirlo en dispositivos móviles o retirarlo si no aporta
-   valor. El código actual existe, pero el sonido no se escuchó durante la prueba real.
-5. **Indicador de quién agregó/compró qué** (multi-usuario: 4 socios + 2 asistentes, aunque
-   este dato viene de otro proyecto del usuario — verificar si aplica aquí).
+1. ~~Confirmación visual (modal) al eliminar~~ ✅ **Hecho**.
+2. ~~Deshacer después de marcar comprado~~ ✅ **Hecho** (paso 15 arriba).
+3. ~~Guía visual del gesto~~ ✅ **Hecho** (paso 20 arriba).
+4. **Decidir el futuro del sonido**: el código existe en `handleNeed` (Web Audio API), pero
+   no se escuchó en el dispositivo móvil real durante las pruebas. Pendiente: corregirlo o
+   retirarlo para limpiar el código.
+5. **Error Boundary** en React para evitar pantallas en blanco ante errores inesperados
+   (ver 6.3 y 6.10). Cambio pequeño, alto impacto en estabilidad.
 6. **Controles rápidos de cantidad**: usar botones `-` y `+` para facilitar la edición desde
-   celular.
-7. **Categorías predefinidas**: ofrecer categorías comunes y una opción para crear una nueva,
-   sin perder la categoría personalizada actual.
-8. **Historial de compras**: registrar producto, cantidad, fecha/hora y usuario que lo marcó
-   como comprado; probablemente requiere una tabla o entidad adicional.
+   celular sin abrir el formulario de edición completo.
+7. **Categorías predefinidas**: ofrecer sugerencias comunes al crear/editar, sin perder la
+   entrada libre actual.
+8. **Historial de compras**: registrar producto, cantidad, fecha/hora cuando se marca como
+   comprado. Requiere tabla nueva en DynamoDB y endpoints nuevos en el backend. Base para
+   estadísticas futuras de consumo familiar.
 9. **Restringir permisos del rol IAM**: actualmente `GitHubActionsOIDCRole` tiene
-   `AdministratorAccess` (amplio, usado para destrabar la demo rápido). Se debe crear una
-   policy específica con solo los permisos que `sam deploy` realmente necesita
-   (CloudFormation, Lambda, API Gateway, DynamoDB, S3, CloudFront, IAM PassRole limitado).
-10. **Error Boundary** en React para evitar pantallas en blanco ante errores inesperados (ver 6.3).
-11. **Modo offline real**: permitir consultar y modificar la lista sin conexión y sincronizar
-    los cambios cuando vuelva la conectividad.
-12. **Autenticación y permisos**: agregar usuarios, roles y control de acceso si la aplicación
-    deja de ser exclusivamente familiar.
-13. **Limpieza/migración de datos**: endpoint o proceso controlado para registros corruptos como
-    el descrito en 6.4.
+   `AdministratorAccess`. Se debe crear una policy específica con solo los permisos que
+   `sam deploy` realmente necesita (CloudFormation, Lambda, API Gateway, DynamoDB, S3,
+   CloudFront, IAM PassRole limitado).
+10. **Modo offline real**: consultar y modificar la lista sin conexión, sincronizar al volver.
+11. **Autenticación y usuarios**: agregar login, roles y registro de quién compró qué, solo
+    cuando el alcance familiar lo requiera. Prerequisito natural del historial multi-usuario.
+12. **Limpieza del dato corrupto**: "Papel higi??nico" en DynamoDB — se puede borrar desde
+    la app directamente (deslizar derecha → confirmar).
 
 ### Estado de funcionalidades que ya existen
 
-- `quantity` y `category` ya están implementados en backend, frontend y modelo de datos.
-- Búsqueda y filtro por categoría ya están implementados en ambas vistas.
-- Crear, editar, eliminar, marcar como necesario y marcar como comprado ya están implementados.
-- El gesto de deslizar hacia la derecha ya está implementado en "Por comprar".
-- El sonido al agregar a "Por comprar" está implementado, pero no está validado como confiable
-  en dispositivos móviles reales.
-- La responsividad móvil ha sido ajustada y validada mediante build; cada modificación visual
-  importante debe comprobarse también en un teléfono real.
+- `quantity` y `category` implementados en backend, frontend y modelo de datos.
+- Búsqueda y filtro por categoría en ambas vistas.
+- Crear, editar (doble tap), eliminar (deslizar derecha + modal), marcar como necesario
+  (deslizar izquierda) y marcar como comprado (deslizar derecha en "Por comprar").
+- Deshacer al marcar comprado: toast de 5 segundos con botón Deshacer.
+- Hint de gestos de primera vez en lista maestra (localStorage).
+- Actualización optimista en `handleNeed` y `handleBought` — sin parpadeos visibles.
+- Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes.
+- El sonido al agregar a "Por comprar" está en el código pero no validado en móvil real.
 
 ### Orden recomendado de implementación
 
-1. Implementar "Deshacer" después de marcar como comprado.
-2. Probar el gesto en Android con nombres cortos, nombres largos y desplazamiento vertical.
-3. Agregar una guía visual de uso del gesto, mostrada una sola vez o hasta que el usuario la
-   descarte.
-4. Resolver o retirar el sonido que actualmente no se escucha en el dispositivo móvil.
-5. Mejorar cantidades y categorías para uso táctil.
-6. Agregar historial de compras.
-7. Agregar autenticación, usuarios y permisos solo cuando el alcance lo requiera.
-8. Fortalecer offline, Error Boundary y permisos IAM como trabajo técnico de madurez.
+1. Resolver o retirar el sonido (pequeño, cierra deuda técnica).
+2. Agregar Error Boundary (pequeño, alta estabilidad).
+3. Controles de cantidad `-`/`+` (mejora UX táctil).
+4. Historial de compras (backend + frontend, ~3-4 sesiones).
+5. Estadísticas básicas sobre el historial (frontend puro).
+6. Autenticación cuando el alcance lo justifique.
+7. Restringir permisos IAM y fortalecer offline como madurez técnica.
 
 ## 9. Guía de continuidad para otra AI
 
@@ -354,21 +383,24 @@ Reglas de trabajo:
 
 Estado funcional actual:
 - Vistas "Por comprar" y "Lista maestra".
-- Crear, editar y eliminar productos.
-- Categorías, cantidades, búsqueda y filtro.
-- Pasar productos de la lista maestra a "Por comprar".
-- Marcar productos como comprados mediante deslizar hacia la derecha.
-- Control compacto alternativo para marcar comprado.
-- Frontend publicado mediante S3 y CloudFront.
-- El sonido al agregar a "Por comprar" está en el código, pero no se escuchó en el celular y
-  debe considerarse pendiente de resolver o retirar.
+- Crear productos (formulario en lista maestra).
+- Editar productos con doble tap/clic sobre la tarjeta.
+- Eliminar productos deslizando la tarjeta hacia la derecha (modal de confirmación).
+- Agregar producto a la lista de compras deslizando la tarjeta hacia la izquierda.
+- Marcar productos como comprados deslizando la tarjeta a la derecha en "Por comprar".
+- Deshacer al marcar comprado: toast de 5 segundos con botón Deshacer.
+- Hint de gestos de primera vez en lista maestra (localStorage, auto-dismiss 8s).
+- Categorías, cantidades, búsqueda y filtro en ambas vistas.
+- Actualización optimista en handleNeed y handleBought (sin parpadeos).
+- Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes (dev/staging/prod).
+- El sonido al agregar a "Por comprar" está en el código pero no validado en móvil real.
 
 Siguiente trabajo recomendado:
-Implementar "Deshacer" después de marcar un producto como comprado. Debe proteger contra un
-deslizamiento accidental, funcionar en móvil y no cambiar el contrato actual de la API sin una
-razón clara.
+Resolver o retirar el sonido en handleNeed (Web Audio API). El código existe pero no sonó
+en el dispositivo móvil real. Opciones: diagnosticar por qué no suena en Android, o retirar
+el código para eliminar la deuda técnica.
 
-Antes de implementar, entrega:
+Antes de implementar cualquier cambio, entrega:
 1. Diagnóstico breve del flujo actual.
 2. Diseño de la solución.
 3. Archivos y funciones que cambiarían.
@@ -402,12 +434,6 @@ Antes de implementar, entrega:
 - Repo GitHub: `EnriqueLoGo/demo-aws-pipeline` (público).
 - Rol OIDC: `arn:aws:iam::112036182812:role/GitHubActionsOIDCRole`.
 - Stacks CloudFormation: `pantry-dev`, `pantry-staging`, `pantry-prod`.
-- Outputs relevantes de cada stack: `ApiUrl`, `FrontendUrl`, `FrontendBucketName`,
-  `FrontendDistributionId`, `TableName`, `FunctionName`.
-- Node local: usar `cmd /c "npm ..."` o `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
-  para evitar el bloqueo de ejecución de scripts de PowerShell con `npm.ps1`.
-- Para desarrollo local del frontend: crear `frontend/.env.local` (no se sube a git) con
-  `VITE_API_URL=<ApiUrl del ambiente dev>`.
 - Outputs relevantes de cada stack: `ApiUrl`, `FrontendUrl`, `FrontendBucketName`,
   `FrontendDistributionId`, `TableName`, `FunctionName`.
 - Node local: usar `cmd /c "npm ..."` o `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
