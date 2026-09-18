@@ -101,7 +101,7 @@ function ShoppingItem({ item, onBought }) {
   )
 }
 
-function MasterItem({ item, onEdit, onDelete, onNeed }) {
+function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
   const [swipeStart, setSwipeStart] = useState(null)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
@@ -198,8 +198,22 @@ function MasterItem({ item, onEdit, onDelete, onNeed }) {
         style={{ transform: "translateX(var(--swipe-offset, 0px))", transition: isSwiping ? "none" : "transform 160ms ease" }}
       >
         {item.name}
-        <small> · {item.category || "General"} · {item.quantity || 1}</small>
+        <small> · {item.category || "General"}</small>
         {item.type === "FIXED" && <span className="badge">FIJO</span>}
+        <span className="qty-controls" onDoubleClick={(e) => e.stopPropagation()}>
+          <button
+            className="btn-qty"
+            aria-label="Reducir cantidad"
+            disabled={(Number(item.quantity) || 1) <= 1}
+            onClick={(e) => { e.stopPropagation(); onQuantityChange(item, -1) }}
+          >−</button>
+          <span className="qty-value">{Number(item.quantity) || 1}</span>
+          <button
+            className="btn-qty"
+            aria-label="Aumentar cantidad"
+            onClick={(e) => { e.stopPropagation(); onQuantityChange(item, +1) }}
+          >+</button>
+        </span>
       </span>
       <div
         className="item-actions"
@@ -352,6 +366,20 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
     })
     try {
       await markNeeded(id)
+    } catch (err) {
+      setError(err.message)
+      loadAll()
+    }
+  }
+
+  async function handleQuantityChange(item, delta) {
+    const newQty = Math.max(1, (Number(item.quantity) || 1) + delta)
+    // Actualización optimista
+    setMasterList((prev) =>
+      prev.map((p) => p.id === item.id ? { ...p, quantity: newQty } : p)
+    )
+    try {
+      await updateProduct(item.id, item.name, item.type, item.category || "General", newQty)
     } catch (err) {
       setError(err.message)
       loadAll()
@@ -582,6 +610,7 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                     onEdit={startEdit}
                     onDelete={askDelete}
                     onNeed={handleNeed}
+                    onQuantityChange={handleQuantityChange}
                   />
                 )
               )}
