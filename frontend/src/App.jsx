@@ -257,6 +257,12 @@ export default function App() {
   const [editQuantity, setEditQuantity] = useState(1)
   const [categoryFilter, setCategoryFilter] = useState("ALL")
 
+  // Hint de gestos — se muestra una sola vez (se guarda en localStorage)
+  const HINT_KEY = "pantry-gestures-hint-seen"
+  const [showGestureHint, setShowGestureHint] = useState(
+    () => localStorage.getItem(HINT_KEY) !== "1"
+  )
+
   // Estado para el "Deshacer" después de marcar como comprado
   const [pendingBought, setPendingBought] = useState(null)
   // { item: {...}, timer: timeoutId }
@@ -293,6 +299,13 @@ export default function App() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  // Auto-dismiss del hint después de 8 segundos
+  useEffect(() => {
+    if (!showGestureHint) return
+    const timer = setTimeout(() => dismissGestureHint(), 8000)
+    return () => clearTimeout(timer)
+  }, [showGestureHint])
 
   const categoryOptions = [
   "ALL",
@@ -434,6 +447,11 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
     }
   }
 
+  function dismissGestureHint() {
+    localStorage.setItem(HINT_KEY, "1")
+    setShowGestureHint(false)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -535,6 +553,24 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
             </form>
 
             <ul className="product-list">
+              {showGestureHint && (
+                <li className="gesture-hint" role="note">
+                  <span className="gesture-hint-text">
+                    <span>← A la lista</span>
+                    <span>·</span>
+                    <span>Doble tap: editar</span>
+                    <span>·</span>
+                    <span>→ Eliminar</span>
+                  </span>
+                  <button
+                    className="gesture-hint-close"
+                    onClick={dismissGestureHint}
+                    aria-label="Cerrar guía de gestos"
+                  >
+                    Entendido
+                  </button>
+                </li>
+              )}
               {filteredMasterList.map((item) =>
                 editingId === item.id ? (
                   <li key={item.id} className="product-item edit-row">

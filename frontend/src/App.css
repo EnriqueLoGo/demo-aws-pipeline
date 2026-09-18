@@ -548,3 +548,44 @@
 .master-swipe-item.is-swiping-need .master-need-hint {
   opacity: 1;
 }
+
+/* Hint de gestos — se muestra solo la primera vez */
+.gesture-hint {
+  background: #1b6e3c;
+  color: white;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  animation: slide-up 300ms ease;
+}
+
+.gesture-hint-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.gesture-hint-text span {
+  white-space: nowrap;
+}
+
+.gesture-hint-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  color: white;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 36px;
+  flex-shrink: 0;
+}
