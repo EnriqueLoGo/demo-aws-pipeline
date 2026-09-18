@@ -3,7 +3,7 @@
 > Este documento existe para que cualquier persona (o cualquier IA) pueda retomar el proyecto
 > sin necesidad de reconstruir el contexto desde cero. Se actualiza conforme avanza el proyecto.
 >
-> Última actualización: 2026-09-17 (sesión 2)
+> Última actualización: 2026-09-17 (sesión 3)
 
 ---
 
@@ -306,6 +306,16 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
     vía `PUT /products/{id}`. `e.stopPropagation()` evita que doble tap en `+` abra edición.
 24. **Campo de cantidad eliminado del formulario de alta**: la cantidad siempre inicia en 1
     al crear un producto; el usuario la ajusta con los botones `-`/`+` en la tarjeta.
+25. **Captura de precio por etiqueta en "Por comprar"**: press largo (~500ms) sobre una
+    tarjeta abre `PriceDialog.jsx` — muestra nombre, campo de precio y subtotal en tiempo
+    real (`precio × quantity`). Los precios se guardan en `sessionStorage` y sobreviven
+    recargas de la app durante la sesión de compra.
+    - Tarjeta muestra subtotal en verde si tiene precio, o hint discreto si no.
+    - Resumen muestra **"🛒 Estimado del carrito"** (suma de productos con precio pendientes)
+      y **"✓ Pagado hasta ahora"** (suma de productos ya marcados comprados con precio).
+    - Al deshacer un producto comprado, se revierte también del contador "Pagado hasta ahora".
+    - Long press y swipe coexisten sin colisión: cualquier movimiento >8px cancela el timer
+      del long press y activa el swipe normalmente.
 
 ## 8. Pendientes / backlog priorizado
 
@@ -318,23 +328,20 @@ Ideas propuestas y aún no iniciadas, ordenadas por impacto y riesgo:
    caso de uso real requiere notificaciones push (ver pendiente #6).
 5. ~~Error Boundary~~ ✅ **Hecho** (paso 22).
 6. ~~Controles rápidos de cantidad `-`/`+`~~ ✅ **Hecho** (paso 23-24).
-7. **Categorías predefinidas**: descartado por ahora — el usuario prefiere la simplicidad
-   actual. La categoría libre sigue disponible en el formulario.
+7. **Categorías predefinidas**: descartado — el usuario prefiere la simplicidad actual.
 8. **Historial de compras**: registrar producto, cantidad, fecha/hora cuando se marca como
    comprado. Requiere tabla nueva en DynamoDB y endpoints nuevos en el backend. Base para
    estadísticas futuras de consumo familiar.
 9. **Notificaciones push**: cuando un familiar agrega un producto a la lista de compras,
    notificar al resto aunque la app esté cerrada. Requiere Web Push API en el frontend y
    un mecanismo de suscripción/envío en el backend (SNS o similar).
-10. **Restringir permisos del rol IAM**: actualmente `GitHubActionsOIDCRole` tiene
-    `AdministratorAccess`. Se debe crear una policy específica con solo los permisos que
-    `sam deploy` realmente necesita (CloudFormation, Lambda, API Gateway, DynamoDB, S3,
-    CloudFront, IAM PassRole limitado).
-11. **Modo offline real**: consultar y modificar la lista sin conexión, sincronizar al volver.
-12. **Autenticación y usuarios**: agregar login, roles y registro de quién compró qué, solo
-    cuando el alcance familiar lo requiera. Prerequisito natural del historial multi-usuario.
-13. **Limpieza del dato corrupto**: "Papel higi??nico" en DynamoDB — se puede borrar desde
-    la app directamente (deslizar derecha → confirmar).
+10. **Opción de limpiar precio** desde la tarjeta en "Por comprar" — `clearPriceForItem`
+    ya está implementada en `App.jsx`, solo falta el botón/gesto que la invoque.
+11. **Restringir permisos del rol IAM**: `GitHubActionsOIDCRole` tiene `AdministratorAccess`.
+    Crear policy específica con solo los permisos necesarios para `sam deploy`.
+12. **Modo offline real**: consultar y modificar la lista sin conexión, sincronizar al volver.
+13. **Autenticación y usuarios**: login, roles y registro de quién compró qué.
+14. **Limpieza del dato corrupto**: "Papel higi??nico" en DynamoDB — borrar desde la app.
 
 ### Estado de funcionalidades que ya existen
 
@@ -344,18 +351,34 @@ Ideas propuestas y aún no iniciadas, ordenadas por impacto y riesgo:
   derecha (modal de confirmación), ajustar cantidad con botones `-`/`+` inline.
 - Agregar a lista de compras deslizando izquierda; marcar comprado deslizando derecha en
   "Por comprar"; deshacer con toast de 5 segundos.
+- **Captura de precio por etiqueta**: press largo en "Por comprar" abre dialog de precio.
+  Subtotal en tarjeta, estimado del carrito y pagado hasta ahora en el resumen.
+  Precios persistidos en `sessionStorage` durante la sesión de compra.
 - Hint de gestos de primera vez en lista maestra (localStorage, auto-dismiss 8s).
 - Actualización optimista en `handleNeed`, `handleBought` y `handleQuantityChange`.
 - Error Boundary: pantalla de error con botón "Reintentar" en vez de pantalla blanca.
 - Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes (dev/staging/prod).
 
+### Archivos frontend relevantes
+
+| Archivo | Responsabilidad |
+|---|---|
+| `App.jsx` | Componente principal, estado global, gestos, lógica de negocio |
+| `App.css` | Todos los estilos de la app |
+| `api.js` | Funciones de llamada a la API (fetch wrapper) |
+| `ConfirmDialog.jsx` | Modal de confirmación para eliminar |
+| `PriceDialog.jsx` | Dialog para capturar precio de etiqueta (press largo) |
+| `ErrorBoundary.jsx` | Clase React que captura errores y evita pantalla blanca |
+| `main.jsx` | Entry point, monta App dentro de ErrorBoundary |
+
 ### Orden recomendado de implementación
 
-1. **Historial de compras** — backend + frontend (~3-4 sesiones). Base para estadísticas.
-2. **Notificaciones push** — notificar al familiar cuando se agrega algo a la lista.
-3. **Estadísticas** sobre el historial (frontend puro, sobre datos del historial).
-4. **Autenticación** cuando el alcance familiar lo justifique.
-5. **Restringir permisos IAM** y fortalecer offline como madurez técnica.
+1. **Botón/gesto para limpiar precio** desde la tarjeta (pequeño, `clearPriceForItem` ya existe).
+2. **Historial de compras** — backend + frontend (~3-4 sesiones). Base para estadísticas.
+3. **Notificaciones push** — notificar al familiar cuando alguien agrega a la lista.
+4. **Estadísticas** sobre el historial (frontend puro).
+5. **Autenticación** cuando el alcance familiar lo justifique.
+6. **Restringir permisos IAM** y fortalecer offline como madurez técnica.
 
 ## 9. Guía de continuidad para otra AI
 
@@ -401,6 +424,9 @@ Estado funcional actual:
 - Marcar productos como comprados deslizando la tarjeta a la derecha en "Por comprar".
 - Deshacer al marcar comprado: toast de 5 segundos con botón Deshacer.
 - Ajustar cantidad con botones `-`/`+` inline en cada tarjeta de lista maestra.
+- Captura de precio por etiqueta: press largo (~500ms) en "Por comprar" abre PriceDialog.
+  Subtotal en tarjeta (precio × quantity), estimado del carrito y pagado hasta ahora en
+  el resumen. Precios en sessionStorage, sobreviven recargas de la sesión.
 - Hint de gestos de primera vez en lista maestra (localStorage, auto-dismiss 8s).
 - Categorías, búsqueda y filtro en ambas vistas.
 - Actualización optimista en handleNeed, handleBought y handleQuantityChange.
@@ -408,12 +434,9 @@ Estado funcional actual:
 - Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes (dev/staging/prod).
 
 Siguiente trabajo recomendado:
-Historial de compras — registrar qué se compró, cuándo y en qué cantidad. Requiere:
-1. Tabla nueva en DynamoDB (`pantry-{env}-history`).
-2. Modificar `function_lambda.py`: al llamar `/products/{id}/bought`, guardar un registro
-   con `{ productId, name, category, quantity, boughtAt }`.
-3. Endpoint nuevo `GET /history` con filtros por fecha.
-4. Vista nueva en el frontend para mostrar el historial agrupado por semana/quincena.
+Agregar botón/gesto para limpiar el precio de un producto en "Por comprar".
+`clearPriceForItem(id)` ya está implementada en App.jsx — solo falta el trigger en la UI.
+Opción simple: un botón "✕" pequeño junto al price-tag que llame clearPriceForItem.
 
 Antes de implementar cualquier cambio, entrega:
 1. Diagnóstico breve del flujo actual.
