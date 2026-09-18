@@ -10,6 +10,7 @@ import {
 } from "./api"
 import "./App.css"
 import ConfirmDialog from "./ConfirmDialog"
+import PriceDialog from "./PriceDialog"
 
 const TABS = {
   SHOPPING: "shopping",
@@ -18,10 +19,11 @@ const TABS = {
 
 const SWIPE_THRESHOLD = 96
 
-function ShoppingItem({ item, onBought }) {
+function ShoppingItem({ item, onBought, onLongPress, price }) {
   const [swipeStart, setSwipeStart] = useState(null)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
+  const longPressTimer = useRef(null)
 
   function handlePointerDown(event) {
     if (event.pointerType === "mouse" && event.button !== 0) return
@@ -29,6 +31,15 @@ function ShoppingItem({ item, onBought }) {
     setSwipeStart({ x: event.clientX, y: event.clientY })
     setSwipeOffset(0)
     setIsSwiping(false)
+
+    // Inicia el timer de long press (500ms sin movimiento = abre dialog de precio)
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null
+      onLongPress(item)
+      // Cancela el gesto de swipe para no disparar ambas acciones
+      setSwipeStart(null)
+      setSwipeOffset(0)
+    }, 500)
   }
 
   function handlePointerMove(event) {
@@ -36,6 +47,14 @@ function ShoppingItem({ item, onBought }) {
 
     const deltaX = event.clientX - swipeStart.x
     const deltaY = event.clientY - swipeStart.y
+
+    // Si hay movimiento significativo, cancelamos el long press
+    if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current)
+        longPressTimer.current = null
+      }
+    }
 
     if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
       setSwipeStart(null)
@@ -53,6 +72,10 @@ function ShoppingItem({ item, onBought }) {
   }
 
   function finishSwipe(event) {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
     if (!swipeStart) return
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
@@ -65,6 +88,10 @@ function ShoppingItem({ item, onBought }) {
   }
 
   function cancelSwipe() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
     setSwipeStart(null)
     setSwipeOffset(0)
     setIsSwiping(false)
@@ -84,10 +111,14 @@ function ShoppingItem({ item, onBought }) {
       </span>
       <span className="product-name">
         {item.name}
-        <small>
-          {" "}
-          · {item.category || "General"} · {item.quantity || 1}
-        </small>
+        <small> · {item.category || "General"} · {item.quantity || 1}</small>
+        {price != null ? (
+          <span className="price-tag">
+            ${(price * (Number(item.quantity) || 1)).toFixed(2)}
+          </span>
+        ) : (
+          <span className="price-hint">Mantén para agregar precio</span>
+        )}
       </span>
       <button
         className="btn-bought"
@@ -243,6 +274,46 @@ export default function App() {
   const [editQuantity, setEditQuantity] = useState(1)
   const [categoryFilter, setCategoryFilter] = useState("ALL")
 
+  // Precios por producto — persisten en sessionStorage durante la sesión de compra
+  const PRICES_KEY = "pantry-session-prices"
+  const [prices, setPrices] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem(PRICES_KEY)
+      return stored ? JSON.parse(stored) : {}
+    } catch {
+      return {}
+    }
+  })
+  // Estado del dialog de precio
+  const [priceDialogItem, setPriceDialogItem] = useState(null)
+  // Productos ya marcados como comprados en esta sesión (para "Pagado hasta ahora")
+  const [boughtItems, setBoughtItems] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem("pantry-session-bought")
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })
+
+  function savePriceForItem(id, price) {
+    setPrices((prev) => {
+      const next = { ...prev, [id]: price }
+      sessionStorage.setItem(PRICES_KEY, JSON.stringify(next))
+      return next
+    })
+    setPriceDialogItem(null)
+  }
+
+  function clearPriceForItem(id) {
+    setPrices((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      sessionStorage.setItem(PRICES_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
   // Hint de gestos — se muestra una sola vez (se guarda en localStorage)
   const HINT_KEY = "pantry-gestures-hint-seen"
   const [showGestureHint, setShowGestureHint] = useState(
@@ -317,6 +388,18 @@ const filteredMasterList = masterList.filter((item) => {
 
 const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
 
+  // Estimado del carrito: todos los productos de "Por comprar" que tienen precio
+  const cartEstimate = shoppingList.reduce((sum, item) => {
+    const p = prices[item.id]
+    return p != null ? sum + p * (Number(item.quantity) || 1) : sum
+  }, 0)
+  const cartEstimateCount = shoppingList.filter((item) => prices[item.id] != null).length
+
+  // Pagado hasta ahora: productos ya marcados como comprados con precio
+  const paidSoFar = boughtItems.reduce((sum, b) => {
+    return sum + b.price * (Number(b.quantity) || 1)
+  }, 0)
+
   function handleBought(id) {
     // Si ya había un pendiente, lo confirmamos de inmediato antes de crear el nuevo
     if (pendingBoughtRef.current) {
@@ -327,6 +410,15 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
 
     const item = shoppingList.find((p) => p.id === id)
     if (!item) return
+
+    // Registrar en boughtItems para el contador "Pagado hasta ahora"
+    if (prices[id] != null) {
+      setBoughtItems((prev) => {
+        const next = prev.some((b) => b.id === id) ? prev : [...prev, { ...item, price: prices[id] }]
+        sessionStorage.setItem("pantry-session-bought", JSON.stringify(next))
+        return next
+      })
+    }
 
     // Quitamos el ítem de la lista visualmente
     setShoppingList((prev) => prev.filter((p) => p.id !== id))
@@ -349,6 +441,12 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
     const { item } = pendingBoughtRef.current
     // Devolvemos el ítem a la lista
     setShoppingList((prev) => [...prev, item])
+    // Revertimos el registro en boughtItems
+    setBoughtItems((prev) => {
+      const next = prev.filter((b) => b.id !== item.id)
+      sessionStorage.setItem("pantry-session-bought", JSON.stringify(next))
+      return next
+    })
     setPendingBought(null)
     pendingBoughtRef.current = null
   }
@@ -499,7 +597,22 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
       </div>
 
       <div className="summary-box">
-        <strong>Total por comprar:</strong> {totalNeeded} unidades
+        <div className="summary-row">
+          <strong>Por comprar:</strong> {totalNeeded} unidades
+        </div>
+        {cartEstimateCount > 0 && (
+          <div className="summary-row summary-estimate">
+            <span>🛒 Estimado del carrito:</span>
+            <strong>${cartEstimate.toFixed(2)}</strong>
+            <span className="summary-note">({cartEstimateCount} de {shoppingList.length} con precio)</span>
+          </div>
+        )}
+        {paidSoFar > 0 && (
+          <div className="summary-row summary-paid">
+            <span>✓ Pagado hasta ahora:</span>
+            <strong>${paidSoFar.toFixed(2)}</strong>
+          </div>
+        )}
       </div>
 
       <main className="content">
@@ -511,7 +624,13 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
               <li className="hint">No hay productos pendientes 🎉</li>
             )}
             {filteredShoppingList.map((item) => (
-              <ShoppingItem key={item.id} item={item} onBought={handleBought} />
+              <ShoppingItem
+                key={item.id}
+                item={item}
+                onBought={handleBought}
+                onLongPress={setPriceDialogItem}
+                price={prices[item.id] ?? null}
+              />
             ))}
           </ul>
         )}
@@ -618,6 +737,14 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
           </button>
         </div>
       )}
+
+      <PriceDialog
+        open={priceDialogItem !== null}
+        item={priceDialogItem}
+        currentPrice={priceDialogItem ? (prices[priceDialogItem.id] ?? null) : null}
+        onSave={savePriceForItem}
+        onCancel={() => setPriceDialogItem(null)}
+      />
 
       <ConfirmDialog
         open={confirmDeleteId !== null}

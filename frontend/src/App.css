@@ -633,3 +633,119 @@
   font-weight: 600;
   color: #333;
 }
+
+/* ── Precio en tarjeta "Por comprar" ── */
+.price-tag {
+  display: inline-block;
+  background: #e8f5e9;
+  color: #1b6e3c;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.price-hint {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+/* ── Resumen / summary-box con precios ── */
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+.summary-estimate {
+  color: #1b6e3c;
+  margin-top: 4px;
+}
+
+.summary-paid {
+  color: #555;
+  margin-top: 2px;
+}
+
+.summary-note {
+  font-size: 12px;
+  color: #888;
+}
+
+/* ── PriceDialog ── */
+.price-dialog-box {
+  max-width: 300px;
+}
+
+.price-dialog-label {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.price-dialog-input-row {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.price-dialog-currency {
+  padding: 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1b6e3c;
+  background: #f0f7f0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.price-dialog-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 10px;
+  font-size: 20px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.price-dialog-subtotal {
+  font-size: 14px;
+  color: #444;
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+.price-dialog-qty {
+  font-size: 14px;
+  color: #888;
+  margin-left: 4px;
+}
+
+.price-dialog-qty-note {
+  font-size: 12px;
+  color: #888;
+  margin-left: 4px;
+}
+
+.price-dialog-save {
+  background: #1b6e3c;
+}
+
+.price-dialog-save:disabled {
+  background: #aaa;
+  cursor: default;
+}
