@@ -3,7 +3,7 @@
 > Este documento existe para que cualquier persona (o cualquier IA) pueda retomar el proyecto
 > sin necesidad de reconstruir el contexto desde cero. Se actualiza conforme avanza el proyecto.
 >
-> Última actualización: 2026-09-17
+> Última actualización: 2026-09-17 (sesión 2)
 
 ---
 
@@ -294,57 +294,68 @@ Se dispara en push a `dev`, `staging`, `main` (main = ambiente `prod`). Pasos:
     a la lista — el estado local se actualiza al instante, la API se llama en segundo plano.
 20. **Hint de gestos de primera vez**: banner verde en lista maestra con los tres gestos.
     Se cierra con "Entendido" o se auto-descarta a los 8 segundos. Guardado en `localStorage`.
+21. **Sonido retirado**: `playProductAddedSound` eliminada de `App.jsx`. No funcionaba en
+    Android por restricciones de autoplay del navegador móvil. El feedback visual del gesto
+    es suficiente. Nota: el caso de uso real (notificar a otro familiar cuando se agrega un
+    producto) requiere notificaciones push, no sonido local.
+22. **Error Boundary**: nuevo componente `ErrorBoundary.jsx` (clase React). Captura cualquier
+    excepción en el árbol de componentes y muestra pantalla con mensaje + botón "Reintentar"
+    en vez de pantalla blanca. Envuelve `<App />` en `main.jsx`.
+23. **Controles de cantidad `-`/`+`**: botones inline en cada tarjeta de lista maestra.
+    Actualización optimista — la cantidad cambia al instante y se sincroniza con el backend
+    vía `PUT /products/{id}`. `e.stopPropagation()` evita que doble tap en `+` abra edición.
+24. **Campo de cantidad eliminado del formulario de alta**: la cantidad siempre inicia en 1
+    al crear un producto; el usuario la ajusta con los botones `-`/`+` en la tarjeta.
 
 ## 8. Pendientes / backlog priorizado
 
 Ideas propuestas y aún no iniciadas, ordenadas por impacto y riesgo:
 
 1. ~~Confirmación visual (modal) al eliminar~~ ✅ **Hecho**.
-2. ~~Deshacer después de marcar comprado~~ ✅ **Hecho** (paso 15 arriba).
-3. ~~Guía visual del gesto~~ ✅ **Hecho** (paso 20 arriba).
-4. **Decidir el futuro del sonido**: el código existe en `handleNeed` (Web Audio API), pero
-   no se escuchó en el dispositivo móvil real durante las pruebas. Pendiente: corregirlo o
-   retirarlo para limpiar el código.
-5. **Error Boundary** en React para evitar pantallas en blanco ante errores inesperados
-   (ver 6.3 y 6.10). Cambio pequeño, alto impacto en estabilidad.
-6. **Controles rápidos de cantidad**: usar botones `-` y `+` para facilitar la edición desde
-   celular sin abrir el formulario de edición completo.
-7. **Categorías predefinidas**: ofrecer sugerencias comunes al crear/editar, sin perder la
-   entrada libre actual.
+2. ~~Deshacer después de marcar comprado~~ ✅ **Hecho** (paso 15).
+3. ~~Guía visual del gesto~~ ✅ **Hecho** (paso 20).
+4. ~~Sonido al agregar a lista~~ ✅ **Retirado** (paso 21) — no funcionaba en Android; el
+   caso de uso real requiere notificaciones push (ver pendiente #6).
+5. ~~Error Boundary~~ ✅ **Hecho** (paso 22).
+6. ~~Controles rápidos de cantidad `-`/`+`~~ ✅ **Hecho** (paso 23-24).
+7. **Categorías predefinidas**: descartado por ahora — el usuario prefiere la simplicidad
+   actual. La categoría libre sigue disponible en el formulario.
 8. **Historial de compras**: registrar producto, cantidad, fecha/hora cuando se marca como
    comprado. Requiere tabla nueva en DynamoDB y endpoints nuevos en el backend. Base para
    estadísticas futuras de consumo familiar.
-9. **Restringir permisos del rol IAM**: actualmente `GitHubActionsOIDCRole` tiene
-   `AdministratorAccess`. Se debe crear una policy específica con solo los permisos que
-   `sam deploy` realmente necesita (CloudFormation, Lambda, API Gateway, DynamoDB, S3,
-   CloudFront, IAM PassRole limitado).
-10. **Modo offline real**: consultar y modificar la lista sin conexión, sincronizar al volver.
-11. **Autenticación y usuarios**: agregar login, roles y registro de quién compró qué, solo
+9. **Notificaciones push**: cuando un familiar agrega un producto a la lista de compras,
+   notificar al resto aunque la app esté cerrada. Requiere Web Push API en el frontend y
+   un mecanismo de suscripción/envío en el backend (SNS o similar).
+10. **Restringir permisos del rol IAM**: actualmente `GitHubActionsOIDCRole` tiene
+    `AdministratorAccess`. Se debe crear una policy específica con solo los permisos que
+    `sam deploy` realmente necesita (CloudFormation, Lambda, API Gateway, DynamoDB, S3,
+    CloudFront, IAM PassRole limitado).
+11. **Modo offline real**: consultar y modificar la lista sin conexión, sincronizar al volver.
+12. **Autenticación y usuarios**: agregar login, roles y registro de quién compró qué, solo
     cuando el alcance familiar lo requiera. Prerequisito natural del historial multi-usuario.
-12. **Limpieza del dato corrupto**: "Papel higi??nico" en DynamoDB — se puede borrar desde
+13. **Limpieza del dato corrupto**: "Papel higi??nico" en DynamoDB — se puede borrar desde
     la app directamente (deslizar derecha → confirmar).
 
 ### Estado de funcionalidades que ya existen
 
 - `quantity` y `category` implementados en backend, frontend y modelo de datos.
 - Búsqueda y filtro por categoría en ambas vistas.
-- Crear, editar (doble tap), eliminar (deslizar derecha + modal), marcar como necesario
-  (deslizar izquierda) y marcar como comprado (deslizar derecha en "Por comprar").
-- Deshacer al marcar comprado: toast de 5 segundos con botón Deshacer.
-- Hint de gestos de primera vez en lista maestra (localStorage).
-- Actualización optimista en `handleNeed` y `handleBought` — sin parpadeos visibles.
-- Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes.
-- El sonido al agregar a "Por comprar" está en el código pero no validado en móvil real.
+- Crear productos (cantidad fija en 1 al alta), editar con doble tap, eliminar deslizando
+  derecha (modal de confirmación), ajustar cantidad con botones `-`/`+` inline.
+- Agregar a lista de compras deslizando izquierda; marcar comprado deslizando derecha en
+  "Por comprar"; deshacer con toast de 5 segundos.
+- Hint de gestos de primera vez en lista maestra (localStorage, auto-dismiss 8s).
+- Actualización optimista en `handleNeed`, `handleBought` y `handleQuantityChange`.
+- Error Boundary: pantalla de error con botón "Reintentar" en vez de pantalla blanca.
+- Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes (dev/staging/prod).
 
 ### Orden recomendado de implementación
 
-1. Resolver o retirar el sonido (pequeño, cierra deuda técnica).
-2. Agregar Error Boundary (pequeño, alta estabilidad).
-3. Controles de cantidad `-`/`+` (mejora UX táctil).
-4. Historial de compras (backend + frontend, ~3-4 sesiones).
-5. Estadísticas básicas sobre el historial (frontend puro).
-6. Autenticación cuando el alcance lo justifique.
-7. Restringir permisos IAM y fortalecer offline como madurez técnica.
+1. **Historial de compras** — backend + frontend (~3-4 sesiones). Base para estadísticas.
+2. **Notificaciones push** — notificar al familiar cuando se agrega algo a la lista.
+3. **Estadísticas** sobre el historial (frontend puro, sobre datos del historial).
+4. **Autenticación** cuando el alcance familiar lo justifique.
+5. **Restringir permisos IAM** y fortalecer offline como madurez técnica.
 
 ## 9. Guía de continuidad para otra AI
 
@@ -383,22 +394,26 @@ Reglas de trabajo:
 
 Estado funcional actual:
 - Vistas "Por comprar" y "Lista maestra".
-- Crear productos (formulario en lista maestra).
+- Crear productos (siempre inician con cantidad 1).
 - Editar productos con doble tap/clic sobre la tarjeta.
 - Eliminar productos deslizando la tarjeta hacia la derecha (modal de confirmación).
 - Agregar producto a la lista de compras deslizando la tarjeta hacia la izquierda.
 - Marcar productos como comprados deslizando la tarjeta a la derecha en "Por comprar".
 - Deshacer al marcar comprado: toast de 5 segundos con botón Deshacer.
+- Ajustar cantidad con botones `-`/`+` inline en cada tarjeta de lista maestra.
 - Hint de gestos de primera vez en lista maestra (localStorage, auto-dismiss 8s).
-- Categorías, cantidades, búsqueda y filtro en ambas vistas.
-- Actualización optimista en handleNeed y handleBought (sin parpadeos).
+- Categorías, búsqueda y filtro en ambas vistas.
+- Actualización optimista en handleNeed, handleBought y handleQuantityChange.
+- Error Boundary: muestra pantalla de error útil en vez de pantalla blanca.
 - Frontend publicado en S3 + CloudFront, pipeline CI/CD con 3 ambientes (dev/staging/prod).
-- El sonido al agregar a "Por comprar" está en el código pero no validado en móvil real.
 
 Siguiente trabajo recomendado:
-Resolver o retirar el sonido en handleNeed (Web Audio API). El código existe pero no sonó
-en el dispositivo móvil real. Opciones: diagnosticar por qué no suena en Android, o retirar
-el código para eliminar la deuda técnica.
+Historial de compras — registrar qué se compró, cuándo y en qué cantidad. Requiere:
+1. Tabla nueva en DynamoDB (`pantry-{env}-history`).
+2. Modificar `function_lambda.py`: al llamar `/products/{id}/bought`, guardar un registro
+   con `{ productId, name, category, quantity, boughtAt }`.
+3. Endpoint nuevo `GET /history` con filtros por fecha.
+4. Vista nueva en el frontend para mostrar el historial agrupado por semana/quincena.
 
 Antes de implementar cualquier cambio, entrega:
 1. Diagnóstico breve del flujo actual.
