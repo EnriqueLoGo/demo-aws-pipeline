@@ -234,7 +234,6 @@ export default function App() {
   const [newName, setNewName] = useState("")
   const [newType, setNewType] = useState("WHEN_MISSING")
   const [newCategory, setNewCategory] = useState("General")
-  const [newQuantity, setNewQuantity] = useState(1)
   const [search, setSearch] = useState("")
   const [editingId, setEditingId] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
@@ -390,10 +389,9 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
     event.preventDefault()
     if (!newName.trim()) return
     try {
-      await createProduct(newName.trim(), newType, newCategory, Number(newQuantity) || 1)
+      await createProduct(newName.trim(), newType, newCategory, 1)
       setNewName("")
       setNewCategory("General")
-      setNewQuantity(1)
       setNewType("WHEN_MISSING")
       loadAll()
     } catch (err) {
@@ -535,13 +533,6 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                 onChange={(e) => setNewCategory(e.target.value)}
               />
 
-              <input
-                type="number"
-                min="1"
-                value={newQuantity}
-                onChange={(e) => setNewQuantity(e.target.value)}
-                style={{ width: 80 }}
-              />
 
               <select value={newType} onChange={(e) => setNewType(e.target.value)}>
                 <option value="WHEN_MISSING">Cuando falte</option>
