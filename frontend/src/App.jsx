@@ -11,6 +11,7 @@ import {
 import "./App.css"
 import ConfirmDialog from "./ConfirmDialog"
 import PriceDialog from "./PriceDialog"
+import EditDialog from "./EditDialog"
 
 const TABS = {
   SHOPPING: "shopping",
@@ -136,8 +137,8 @@ function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
   const [swipeStart, setSwipeStart] = useState(null)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
-  // "right" = eliminar, "left" = agregar a lista
   const [swipeDir, setSwipeDir] = useState(null)
+  const longPressTimer = useRef(null)
 
   function handlePointerDown(event) {
     if (event.pointerType === "mouse" && event.button !== 0) return
@@ -146,6 +147,14 @@ function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
     setSwipeOffset(0)
     setIsSwiping(false)
     setSwipeDir(null)
+
+    // Long press: 500ms sin movimiento → abre modal de edición
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null
+      onEdit(item)
+      setSwipeStart(null)
+      setSwipeOffset(0)
+    }, 500)
   }
 
   function handlePointerMove(event) {
@@ -153,6 +162,14 @@ function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
 
     const deltaX = event.clientX - swipeStart.x
     const deltaY = event.clientY - swipeStart.y
+
+    // Cualquier movimiento significativo cancela el long press
+    if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current)
+        longPressTimer.current = null
+      }
+    }
 
     // Si el gesto es más vertical que horizontal, lo ignoramos (scroll normal)
     if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX)) {
@@ -179,6 +196,10 @@ function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
   }
 
   function finishSwipe(event) {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
     if (!swipeStart) return
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
@@ -194,6 +215,10 @@ function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
   }
 
   function cancelSwipe() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
     setSwipeStart(null)
     setSwipeOffset(0)
     setIsSwiping(false)
@@ -206,7 +231,6 @@ function MasterItem({ item, onEdit, onDelete, onNeed, onQuantityChange }) {
   return (
     <li
       className={`product-item master-item master-swipe-item${isSwipingRight ? " is-swiping-delete" : ""}${isSwipingLeft ? " is-swiping-need" : ""}`}
-      onDoubleClick={() => onEdit(item)}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finishSwipe}
@@ -266,12 +290,8 @@ export default function App() {
   const [newType, setNewType] = useState("WHEN_MISSING")
   const [newCategory, setNewCategory] = useState("General")
   const [search, setSearch] = useState("")
-  const [editingId, setEditingId] = useState(null)
+  const [editingItem, setEditingItem] = useState(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
-  const [editName, setEditName] = useState("")
-  const [editType, setEditType] = useState("WHEN_MISSING")
-  const [editCategory, setEditCategory] = useState("General")
-  const [editQuantity, setEditQuantity] = useState(1)
   const [categoryFilter, setCategoryFilter] = useState("ALL")
 
   // Precios por producto — persisten en sessionStorage durante la sesión de compra
@@ -508,33 +528,18 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
     }
   }
 
-  function startEdit(item) {
-    setEditingId(item.id)
-    setEditName(item.name)
-    setEditType(item.type)
-    setEditCategory(item.category || "General")
-    setEditQuantity(item.quantity || 1)
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-  }
-
-  async function handleSaveEdit(event, id) {
-    event.preventDefault()
-    if (!editName.trim()) return
+  async function handleSaveEdit(id, name, type, category) {
+    // Actualización optimista en masterList
+    setMasterList((prev) =>
+      prev.map((p) => p.id === id ? { ...p, name, type, category } : p)
+    )
+    setEditingItem(null)
     try {
-      await updateProduct(
-        id,
-        editName.trim(),
-        editType,
-        editCategory || "General",
-        Number(editQuantity) || 1
-      )
-      setEditingId(null)
-      loadAll()
+      const current = masterList.find((p) => p.id === id)
+      await updateProduct(id, name, type, category, Number(current?.quantity) || 1)
     } catch (err) {
       setError(err.message)
+      loadAll()
     }
   }
 
@@ -692,48 +697,14 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
                 </li>
               )}
               {filteredMasterList.map((item) =>
-                editingId === item.id ? (
-                  <li key={item.id} className="product-item edit-row">
-                    <form className="add-form" onSubmit={(e) => handleSaveEdit(e, item.id)}>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                      />
-
-                      <input
-                        type="text"
-                        value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value)}
-                      />
-
-                      <input
-                        type="number"
-                        min="1"
-                        value={editQuantity}
-                        onChange={(e) => setEditQuantity(e.target.value)}
-                        style={{ width: 80 }}
-                      />
-
-                      <select value={editType} onChange={(e) => setEditType(e.target.value)}>
-                        <option value="WHEN_MISSING">Cuando falte</option>
-                        <option value="FIXED">Fijo (siempre)</option>
-                      </select>
-
-                      <button type="submit">Guardar</button>
-                      <button type="button" onClick={cancelEdit}>Cancelar</button>
-                    </form>
-                  </li>
-                ) : (
-                  <MasterItem
+                <MasterItem
                     key={item.id}
                     item={item}
-                    onEdit={startEdit}
+                    onEdit={setEditingItem}
                     onDelete={askDelete}
                     onNeed={handleNeed}
                     onQuantityChange={handleQuantityChange}
                   />
-                )
               )}
             </ul>
           </>
@@ -748,6 +719,13 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
           </button>
         </div>
       )}
+
+      <EditDialog
+        open={editingItem !== null}
+        item={editingItem}
+        onSave={handleSaveEdit}
+        onCancel={() => setEditingItem(null)}
+      />
 
       <PriceDialog
         open={priceDialogItem !== null}
