@@ -420,8 +420,15 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
       })
     }
 
-    // Quitamos el ítem de la lista visualmente
+    // Quitamos el ítem de la lista visualmente y actualizamos masterList
     setShoppingList((prev) => prev.filter((p) => p.id !== id))
+    // Para productos WHEN_MISSING: needed vuelve a false en la lista maestra
+    // Para productos FIXED: needed permanece true (siempre aparecen en "Por comprar")
+    setMasterList((prev) =>
+      prev.map((p) =>
+        p.id === id && p.type !== "FIXED" ? { ...p, needed: false } : p
+      )
+    )
 
     // Creamos el timer de 5 segundos
     const timer = setTimeout(() => {
@@ -439,8 +446,12 @@ const totalNeeded = shoppingList.reduce((sum, item) => sum + (Number(item.quanti
     if (!pendingBoughtRef.current) return
     clearTimeout(pendingBoughtRef.current.timer)
     const { item } = pendingBoughtRef.current
-    // Devolvemos el ítem a la lista
+    // Devolvemos el ítem a la lista de compras
     setShoppingList((prev) => [...prev, item])
+    // Revertimos needed en masterList
+    setMasterList((prev) =>
+      prev.map((p) => p.id === item.id ? { ...p, needed: true } : p)
+    )
     // Revertimos el registro en boughtItems
     setBoughtItems((prev) => {
       const next = prev.filter((b) => b.id !== item.id)
